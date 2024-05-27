@@ -3,9 +3,10 @@ namespace nova;
 use nova\commands\init\InitCommand;
 
 const VERSION = "1.0.0";
+const SUPPORTED_PHP_VERSION = "7.4.0";
 // check php version
-if (version_compare(phpversion(), '7.4.0', '<')) {
-    exit("This script requires PHP 7.4.0 or later.\n");
+if (version_compare(phpversion(), SUPPORTED_PHP_VERSION, '<')) {
+    exit("This script requires PHP ".SUPPORTED_PHP_VERSION." or later.\n");
 }
 // check if running from command line
 if (!isset($argv)){

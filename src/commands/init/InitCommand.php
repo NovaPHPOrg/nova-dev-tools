@@ -3,6 +3,7 @@
 namespace nova\commands\init;
 
 use nova\commands\BaseCommand;
+use const nova\SUPPORTED_PHP_VERSION;
 
 class InitCommand extends BaseCommand
 {
@@ -31,23 +32,86 @@ class InitCommand extends BaseCommand
             // 创建nova.json
             $json = json_encode($this->nova, JSON_PRETTY_PRINT);
             file_put_contents($projectDir . DIRECTORY_SEPARATOR . "nova.json", $json);
-            mkdir($projectDir . DIRECTORY_SEPARATOR . "src");
-            // src目录设置为源码目录
-            // 创建README.md
-            $readme = <<<EOF
+
+            $dirs = [
+                "src",
+                "src/app", //应用程序目录
+                "src/public", //公共目录
+                "src/nova",//nova运行目录
+                "src/nova/framework",//nova框架目录
+                "src/nova/plugins",//nova插件目录
+            ];
+            foreach ($dirs as $dir) {
+                mkdir($projectDir . DIRECTORY_SEPARATOR . $dir, 0777, true);
+                // 创建.gitkeep
+                file_put_contents($projectDir . DIRECTORY_SEPARATOR . $dir . DIRECTORY_SEPARATOR . ".gitkeep", "");
+            }
+
+            $this->initFramework();
+
+        }else{
+            $this->echoError("项目目录已存在。");
+            exit();
+        }
+    }
+    private function initReadme()
+    {
+        // 创建README.md
+        $readme = <<<EOF
 # {$this->nova->name}
 {$this->nova->description}
 
 # License
 {$this->nova->license}
 EOF;
-            file_put_contents($projectDir . DIRECTORY_SEPARATOR . "README.md", $readme);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "README.md", $readme);
+    }
+    private function initComposer(){
+        $composer = json_encode([
+            "name" => "app/".$this->nova->name,
+            "description" => $this->nova->description,
+            "version" => $this->nova->version,
+            "authors" => [
+                $this->nova->author
+            ],
+            "license" => $this->nova->license,
+            "require" => [
+                "php" => ">=".SUPPORTED_PHP_VERSION
+            ],
+            "autoload" => [
+                "psr-4" => [
+                    "app\\" => "src/app"
+                ]
+            ]
+        ], JSON_PRETTY_PRINT);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", $composer);
+    }
 
+    private function initIgnore()
+    {
+        $ignore = <<<EOF
+/vendor
+composer.lock
+EOF;
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . ".gitignore", $ignore);
+        shell_exec("cd {$this->workingDir} && git add . && git commit -m ':tada:  init {$this->nova->name}'");
+    }
 
-        }else{
-            $this->echoError("项目目录已存在。");
-            exit();
-        }
+    private function initPublic(){
+        $index = <<<EOF
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+//TODO 入口文件，App启动
+EOF;
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "src/public/index.php", $index);
+
+    }
+    private function initFramework()
+    {
+        $this->initReadme();
+        $this->initComposer();
+        $this->initPublic();
+        //$this->initIgnore();
     }
 
     private function getProjectName(): string

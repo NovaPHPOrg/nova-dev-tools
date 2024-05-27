@@ -1,7 +1,13 @@
 {
-  "name": "nova-dev-tools",
+  "name": "nova/nova-dev-tools",
   "version": "1.0.0",
   "require": {
+    "php": ">=7.4.0",
     "ext-json": "*"
-  }
+  },
+    "autoload": {
+        "psr-4": {
+        "nova\\": "src/"
+        }
+    }
 }
