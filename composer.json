@@ -1,0 +1,7 @@
+{
+  "name": "nova-dev-tools",
+  "version": "1.0.0",
+  "require": {
+    "ext-json": "*"
+  }
+}
