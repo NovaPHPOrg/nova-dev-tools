@@ -56,7 +56,7 @@ EOF;
         $regex = "/^[a-z0-9_\-]+$/";
         if (!preg_match($regex, $projectName)) {
             $this->echoError("项目名只能包含小写字母、数字、下划线和破折号。");
-            $this->getProjectName();
+            $projectName =  $this->getProjectName();
         }
         return $projectName;
     }
