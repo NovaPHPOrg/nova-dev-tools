@@ -48,7 +48,7 @@ class InitCommand extends BaseCommand
             }
 
             $this->initFramework();
-
+            $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
         }else{
             $this->echoError("项目目录已存在。");
             exit();
@@ -125,8 +125,5 @@ EOF;
         return $projectName;
     }
 
-    public function __destruct()
-    {
-        $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
-    }
+
 }

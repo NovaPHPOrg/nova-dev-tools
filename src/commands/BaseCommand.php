@@ -23,6 +23,10 @@ abstract class BaseCommand
         $line = fgets($handle);
         fclose($handle);
         $received = trim($line);
+        if ($received == "exit"){
+            $this->echoWarn("操作已取消。");
+            exit(0);
+        }
         return $received == "" ? $default : $received;
     }
 
