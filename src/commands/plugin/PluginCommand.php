@@ -9,7 +9,7 @@ class PluginCommand extends BaseCommand
 
     public function init()
     {
-       $pluginManager = new PluginManager();
+       $pluginManager = new PluginManager($this);
        switch ($this->options[0]){
            case "list":
                $pluginManager->list();
