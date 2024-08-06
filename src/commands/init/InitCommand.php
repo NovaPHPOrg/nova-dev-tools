@@ -37,6 +37,7 @@ class InitCommand extends BaseCommand
             //   "src/nova/framework",//nova框架目录
             "src/nova/plugin",//nova插件目录
             "src/runtime",//nova运行时目录
+            "tests",//测试目录
         ];
         foreach ($dirs as $dir) {
             $dir = $this->getDir($dir);
@@ -109,6 +110,8 @@ return [
     'domain'=>[
         '0.0.0.0',//允许访问的域名
     ],
+    'version'=>'',//版本号
+    'versionCode'=>1,//版本号
     'db'=>[
         'type'=>'mysql',
         'host'=>'localhost',

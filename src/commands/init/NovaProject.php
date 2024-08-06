@@ -10,9 +10,9 @@ class NovaProject
     public string $author = "Nova Team <ankio@ankio.net>";
     public string $license = "MIT";
     public array $scripts = [
-        "test" => "echo \"Error: no test specified\" && exit 1",
-        "build" => "echo \"Error: no build specified\" && exit 1",
-        "start" => "echo \"Error: no start specified\" && exit 1"
+        "list" => "php nova.phar plugin list",
+        "build" => "php nova.phar build",
+        "test" => "php nova.phar test"
     ];
     public string $source = "/src";
 }
