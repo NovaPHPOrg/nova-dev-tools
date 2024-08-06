@@ -71,7 +71,7 @@ class PluginManager
     function update()
     {
         $this->baseCommand->echoInfo("Updating plugins...");
-        exec("git submodule update --init --recursive", $output, $returnVar);
+        exec("git submodule update --remote", $output, $returnVar);
         if ($returnVar !== 0) {
             $this->baseCommand->echoError("Failed to update plugins.");
             exit(1);
