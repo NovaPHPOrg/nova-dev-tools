@@ -147,7 +147,7 @@ EOF;
         $this->initPublic();
         $this->initConfig();
         $this->initFrameworkPHP();
-        //$this->initIgnore();
+        $this->initIgnore();
     }
 
     private function getProjectName(): string
