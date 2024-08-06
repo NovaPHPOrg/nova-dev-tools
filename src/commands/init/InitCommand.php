@@ -93,7 +93,6 @@ EOF;
 /vendor
 composer.lock
 /src/runtime
-/src/nova
 EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . ".gitignore", $ignore);
         shell_exec("git add . && git commit -m ':tada:  init {$this->nova->name}'");
