@@ -130,7 +130,9 @@ EOF;
         $index = <<<EOF
 <?php
 namespace app;
-require __DIR__ . '/../vendor/autoload.php';
+if(file_exists(__DIR__ . '/../vendor/autoload.php')){
+    require __DIR__ . '/../vendor/autoload.php';
+}
 include __DIR__ . '/../nova/framework/bootstrap.php';
 EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $this->getDir("src/public/index.php"), $index);
