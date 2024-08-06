@@ -27,6 +27,9 @@ class PluginCommand extends BaseCommand
                 else
                     $pluginManager->remove($this->options[1]);
                break;
+           case "update":
+               $pluginManager->update();
+               break;
            default:
                $this->echoError("Invalid command.");
                break;

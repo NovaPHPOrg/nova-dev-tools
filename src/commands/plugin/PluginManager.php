@@ -68,6 +68,18 @@ class PluginManager
         $this->baseCommand->echoInfo("Plugin $pluginName uninstalled successfully.");
     }
 
+    function update()
+    {
+        $this->baseCommand->echoInfo("Updating plugins...");
+        exec("git submodule update --init --recursive", $output, $returnVar);
+        if ($returnVar !== 0) {
+            $this->baseCommand->echoError("Failed to update plugins.");
+            exit(1);
+        }
+
+        $this->baseCommand->echoInfo("Plugins updated successfully.");
+    }
+
     function addSubmodule(string $submoduleUrl, string $path): void
     {
         // 拉取子模块
