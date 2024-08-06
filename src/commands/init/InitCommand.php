@@ -49,10 +49,11 @@ class InitCommand extends BaseCommand
         $this->initFramework();
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
     }
-    private function getDir($dir){
+    private function getDir($dir): string
+    {
         return str_replace("/", DIRECTORY_SEPARATOR, $dir);
     }
-    private function initReadme()
+    private function initReadme(): void
     {
         // 创建README.md
         $readme = <<<EOF
@@ -64,7 +65,8 @@ class InitCommand extends BaseCommand
 EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "README.md", $readme);
     }
-    private function initComposer(){
+    private function initComposer(): void
+    {
         $composer = json_encode([
             "name" => "app/".$this->nova->name,
             "description" => $this->nova->description,
@@ -85,7 +87,7 @@ EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", $composer);
     }
 
-    private function initIgnore()
+    private function initIgnore(): void
     {
         $ignore = <<<EOF
 /vendor
@@ -97,7 +99,7 @@ EOF;
         shell_exec("git add . && git commit -m ':tada:  init {$this->nova->name}'");
     }
 
-    private function initConfig()
+    private function initConfig(): void
     {
         $config = <<<EOF
 <?php
@@ -126,7 +128,8 @@ EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $this->getDir("src/config.php"), $config);
     }
 
-    private function initPublic(){
+    private function initPublic(): void
+    {
         $index = <<<EOF
 <?php
 namespace app;
@@ -138,11 +141,12 @@ EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $this->getDir("src/public/index.php"), $index);
 
     }
-    private function initFrameworkPHP(){
+    private function initFrameworkPHP(): void
+    {
         $plugin = new PluginManager($this);
         $plugin->addSubmodule("https://github.com/NovaPHPOrg/nova-framework","./src/nova/framework");
     }
-    private function initFramework()
+    private function initFramework(): void
     {
         $this->initReadme();
         $this->initComposer();

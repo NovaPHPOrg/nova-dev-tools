@@ -16,7 +16,7 @@ class PluginCommand extends BaseCommand
         $this->echoInfo("  update: Update all plugins.");
     }
 
-    public function init()
+    public function init(): void
     {
        $pluginManager = new PluginManager($this);
 
@@ -25,22 +25,34 @@ class PluginCommand extends BaseCommand
            return;
        }
 
-       switch ($this->options[0]){
+       //删除第一个参数
+       $condition =  array_shift($this->options);
+
+       switch ($condition){
            case "list":
                $pluginManager->list();
                break;
            case "add":
                if (count($this->options) < 2)
                    $this->echoError("Please specify the plugin name.");
-                else
+                else{
+                    foreach ($this->options as $option) {
+                        $this->echoInfo("Install Plugin $option");
+                        $pluginManager->add($option);
+                    }
+                }
 
-                    $pluginManager->add($this->options[1]);
+
                break;
            case "remove":
                 if (count($this->options) < 2)
                      $this->echoError("Please specify the plugin name.");
-                else
-                    $pluginManager->remove($this->options[1]);
+                else {
+                    foreach ($this->options as $option) {
+                        $this->echoInfo("Uninstall Plugin $option");
+                        $pluginManager->remove($option);
+                    }
+                }
                break;
            case "update":
                $pluginManager->update();
