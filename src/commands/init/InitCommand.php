@@ -3,6 +3,7 @@
 namespace nova\commands\init;
 
 use nova\commands\BaseCommand;
+use nova\commands\plugin\PluginManager;
 use const nova\SUPPORTED_PHP_VERSION;
 
 class InitCommand extends BaseCommand
@@ -17,10 +18,9 @@ class InitCommand extends BaseCommand
 
     public function init()
     {
-        $this->echoInfo("初始化项目...");
+        $this->echoInfo("init project...");
         $this->nova->name = $this->getProjectName();
         $this->nova->description = $this->prompt("请输入项目描述: ",$this->nova->description);
-        $this->nova->version = $this->prompt("请输入版本号: ",$this->nova->version);
         $this->nova->author = $this->prompt("请输入作者: ", $this->nova->author);
         $this->nova->license = $this->prompt("请输入许可证: ",$this->nova->license);
         // 创建项目目录
@@ -32,15 +32,16 @@ class InitCommand extends BaseCommand
             shell_exec("cd {$this->projectDir} && git init");
             // 创建nova.json
             $json = json_encode($this->nova, JSON_PRETTY_PRINT);
-            file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . "nova.json", $json);
+            file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . "package.json", $json);
 
             $dirs = [
                 "src",
                 "src/app", //应用程序目录
                 "src/public", //公共目录
                 "src/nova",//nova运行目录
-                "src/nova/framework",//nova框架目录
-                "src/nova/plugins",//nova插件目录
+             //   "src/nova/framework",//nova框架目录
+                "src/nova/plugin",//nova插件目录
+                "src/runtime",//nova运行时目录
             ];
             foreach ($dirs as $dir) {
                 $dir = $this->getDir($dir);
@@ -97,31 +98,67 @@ EOF;
         $ignore = <<<EOF
 /vendor
 composer.lock
+/src/runtime
+/src/nova
 EOF;
         file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . ".gitignore", $ignore);
         shell_exec("cd {$this->projectDir} && git add . && git commit -m ':tada:  init {$this->nova->name}'");
     }
 
+    private function initConfig()
+    {
+        $config = <<<EOF
+<?php
+return [
+    'debug'=>true,//当前是否为调试模式
+    'timezone'=>'Asia/Shanghai',//时区
+    'default_route'=>true,//启用默认路由，nova默认根据url自动解析到AnyModule/AnyController/AnyMethod方法，如果设置为false，则需要手动配置路由
+    'cache_driver' => 'nova\framework\cache\ApcuCacheDriver',//如果apcu不可用，则默认使用文件缓存
+    'render_engine' => 'nova\framework\render\SmartyRender',//默认使用smarty模板引擎
+    'domain'=>[
+        '0.0.0.0',//允许访问的域名
+    ],
+    'db'=>[
+        'type'=>'mysql',
+        'host'=>'localhost',
+        'port'=>3306,
+        'username'=>'root',
+        'password'=>'root',
+        'db'=>'test',
+        'charset'=>'utf8mb4',
+    ]
+];
+EOF;
+        file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . $this->getDir("src/config.php"), $config);
+    }
+
     private function initPublic(){
         $index = <<<EOF
 <?php
+namespace app;
 require __DIR__ . '/../vendor/autoload.php';
-//TODO 入口文件，App启动
+include __DIR__ . '/../nova/framework/bootstrap.php';
 EOF;
         file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . $this->getDir("src/public/index.php"), $index);
 
+    }
+    private function initFrameworkPHP(){
+        $plugin = new PluginManager($this);
+        $plugin->addSubmodule("https://github.com/NovaPHPOrg/nova-framework",$this->workingDir."/src/nova/framework");
     }
     private function initFramework()
     {
         $this->initReadme();
         $this->initComposer();
         $this->initPublic();
+        $this->initConfig();
+        $this->initFrameworkPHP();
         //$this->initIgnore();
     }
 
     private function getProjectName(): string
     {
-        $projectName = $this->prompt("请输入项目名: ");
+        $projectName = $this->prompt("项目名称: ");
         $regex = "/^[a-z0-9_\-]+$/";
         if (!preg_match($regex, $projectName)) {
             $this->echoError("项目名只能包含小写字母、数字、下划线和破折号。");

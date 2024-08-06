@@ -1,0 +1,3 @@
+[submodule "src/nova/framework"]
+	path = src/nova/framework
+	url = https://github.com/NovaPHPOrg/nova-framework

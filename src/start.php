@@ -15,21 +15,18 @@ if (!isset($argv)){
 
 include "autoload.php";
 
-function help($command = "")
+function help()
 {
-    switch ($command){
-
-        default:
-            echo "Usage: nova <command> [options]\n";
-            echo "Available commands:\n";
-            echo "  help\n";
-            echo "  version\n";
-            echo "  init\n";
-            echo "  build\n";
-            echo "  test\n";
-            echo "  deploy\n";
-            break;
-    }
+    echo "Usage: nova <command> [options]\n";
+    echo "Available commands:\n";
+    echo "  help    - this message\n";
+    echo "  version - devtools version\n";
+    echo "  init    - create an new nova project\n";
+    echo "  build   - build nova project as an phar package or an zip archive\n";
+    echo "  test    - test nova project\n";
+    echo "  plugin  <list>- list plugins of nova php\n";
+    echo "  plugin  <add> <plugin-name> - install a plugin\n";
+    echo "  plugin  <remove> <plugin-name> - uninstall a plugin\n";
 }
 
 

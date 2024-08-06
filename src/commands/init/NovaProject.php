@@ -15,6 +15,4 @@ class NovaProject
         "start" => "echo \"Error: no start specified\" && exit 1"
     ];
     public string $source = "/src";
-    public array $plugins = [];
-    public array $dependencies = [];
 }
