@@ -50,21 +50,21 @@ class PluginManager
             if (in_array($item["name"], $executed)){
                 continue;
             }
-            $this->baseCommand->echoInfo($item["name"]);
+            $this->baseCommand->echoInfo(str_replace("nova-", "", $item["name"]));
         }
     }
 
     function add($pluginName)
     {
         $this->baseCommand->echoInfo("Installing plugin $pluginName...");
-        $this->addSubmodule("https://github.com/NovaPHPOrg/$pluginName","src/nova/plugin/$pluginName");
+        $this->addSubmodule("https://github.com/NovaPHPOrg/nova-$pluginName","./src/nova/plugin/$pluginName");
         $this->baseCommand->echoInfo("Plugin $pluginName installed successfully.");
     }
 
     function remove($pluginName)
     {
         $this->baseCommand->echoInfo("Uninstalling plugin $pluginName...");
-        $this->removeSubmodule("src/nova/plugin/$pluginName");
+        $this->removeSubmodule("./src/nova/plugin/$pluginName");
         $this->baseCommand->echoInfo("Plugin $pluginName uninstalled successfully.");
     }
 
@@ -104,9 +104,7 @@ class PluginManager
     {
         // 移除子模块目录
         if (is_dir($path)) {
-            $command = "rm -rf $path";
-            exec($command, $output, $returnVar);
-            if ($returnVar !== 0) {
+            if (!$this->baseCommand->removePath($path)) {
                 $this->baseCommand->echoError("Failed to remove submodule directory '$path'.");
                 exit(1);
             }
@@ -117,7 +115,7 @@ class PluginManager
         }
 
         // 从 .gitmodules 文件中移除子模块配置
-        $command = "git submodule deinit $path";
+        $command = "git submodule deinit -f $path";
         exec($command, $output, $returnVar);
         if ($returnVar !== 0) {
             $this->baseCommand->echoError("Failed to deinit submodule '$path'.");
@@ -126,7 +124,7 @@ class PluginManager
         $this->baseCommand->echoSuccess("Submodule '$path' deinitialized.");
 
         // 从 .git/config 文件中移除子模块配置
-        $command = "git rm $path";
+        $command = "git rm -f $path";
         exec($command, $output, $returnVar);
         if ($returnVar !== 0) {
             $this->baseCommand->echoError("Failed to remove submodule configuration for '$path'.");
@@ -137,9 +135,7 @@ class PluginManager
         // 删除 .git/modules 目录下的子模块目录
         $modulePath = ".git/modules/$path";
         if (is_dir($modulePath)) {
-            $command = "rm -rf $modulePath";
-            exec($command, $output, $returnVar);
-            if ($returnVar !== 0) {
+            if (!$this->baseCommand->removePath($modulePath)) {
                 $this->baseCommand->echoError("Failed to remove submodule directory '$modulePath'.");
                 exit(1);
             }

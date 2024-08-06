@@ -8,7 +8,7 @@ abstract class BaseCommand
 {
     protected ConsoleColor $consoleColor;
     abstract public function init();
-    protected string $workingDir;
+    public string $workingDir;
     protected array $options;
     public function __construct($workingDir, $options)
     {
@@ -56,6 +56,30 @@ abstract class BaseCommand
     function echoInfo($message, $newLine = true)
     {
         $this->print($message,"light_blue", $newLine );
+    }
+
+    /**
+     * 封装删除目录和文件的函数，支持Windows和Linux
+     *
+     * @param string $path 要删除的路径
+     * @return bool 成功返回true，失败返回false
+     */
+    function removePath(string $path): bool
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            // Windows删除目录和文件命令
+            if (is_dir($path)) {
+                $command = "rmdir /S /Q \"$path\"";
+            } else {
+                $command = "del /F /Q \"$path\"";
+            }
+        } else {
+            // UNIX-like系统删除目录和文件命令
+            $command = "rm -rf \"$path\"";
+        }
+
+        exec($command, $output, $returnVar);
+        return $returnVar === 0;
     }
 
 }

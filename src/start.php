@@ -39,6 +39,7 @@ if(count($argv) < 2){
 $command = strtolower(str_replace("-", "", $argv[1]));
 $workingDir = getcwd();
 $options = array_slice($argv, 2);
+echo "Working directory: $workingDir\n";
 switch ($command){
     case "version":
     case "v":

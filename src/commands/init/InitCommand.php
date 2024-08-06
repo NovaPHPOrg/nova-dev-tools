@@ -9,7 +9,6 @@ use const nova\SUPPORTED_PHP_VERSION;
 class InitCommand extends BaseCommand
 {
     private NovaProject $nova;
-    private string $projectDir;
     public function __construct($workingDir, $options)
     {
         parent::__construct($workingDir, $options);
@@ -24,38 +23,30 @@ class InitCommand extends BaseCommand
         $this->nova->author = $this->prompt("请输入作者: ", $this->nova->author);
         $this->nova->license = $this->prompt("请输入许可证: ",$this->nova->license);
         // 创建项目目录
-        $this->projectDir = $this->workingDir . DIRECTORY_SEPARATOR . $this->nova->name;
-        $this->echoInfo("创建项目目录 {$this->projectDir}...");
-        if (!file_exists($this->projectDir)) {
-            mkdir($this->projectDir);
-            // 初始化git
-            shell_exec("cd {$this->projectDir} && git init");
-            // 创建nova.json
-            $json = json_encode($this->nova, JSON_PRETTY_PRINT);
-            file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . "package.json", $json);
+        // 初始化git
+        shell_exec("git init");
+        // 创建nova.json
+        $json = json_encode($this->nova, JSON_PRETTY_PRINT);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", $json);
 
-            $dirs = [
-                "src",
-                "src/app", //应用程序目录
-                "src/public", //公共目录
-                "src/nova",//nova运行目录
-             //   "src/nova/framework",//nova框架目录
-                "src/nova/plugin",//nova插件目录
-                "src/runtime",//nova运行时目录
-            ];
-            foreach ($dirs as $dir) {
-                $dir = $this->getDir($dir);
-                mkdir($this->projectDir . DIRECTORY_SEPARATOR . $dir, 0777, true);
-                // 创建.gitkeep
-                file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . $dir . DIRECTORY_SEPARATOR . ".gitkeep", "");
-            }
-
-            $this->initFramework();
-            $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
-        }else{
-            $this->echoError("项目目录已存在。");
-            exit();
+        $dirs = [
+            "src",
+            "src/app", //应用程序目录
+            "src/public", //公共目录
+            "src/nova",//nova运行目录
+            //   "src/nova/framework",//nova框架目录
+            "src/nova/plugin",//nova插件目录
+            "src/runtime",//nova运行时目录
+        ];
+        foreach ($dirs as $dir) {
+            $dir = $this->getDir($dir);
+            mkdir($this->workingDir . DIRECTORY_SEPARATOR . $dir, 0777, true);
+            // 创建.gitkeep
+            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $dir . DIRECTORY_SEPARATOR . ".gitkeep", "");
         }
+
+        $this->initFramework();
+        $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
     }
     private function getDir($dir){
         return str_replace("/", DIRECTORY_SEPARATOR, $dir);
@@ -70,7 +61,7 @@ class InitCommand extends BaseCommand
 # License
 {$this->nova->license}
 EOF;
-        file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . "README.md", $readme);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "README.md", $readme);
     }
     private function initComposer(){
         $composer = json_encode([
@@ -90,7 +81,7 @@ EOF;
                 ]
             ]
         ], JSON_PRETTY_PRINT);
-        file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . "composer.json", $composer);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", $composer);
     }
 
     private function initIgnore()
@@ -101,8 +92,8 @@ composer.lock
 /src/runtime
 /src/nova
 EOF;
-        file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . ".gitignore", $ignore);
-        shell_exec("cd {$this->projectDir} && git add . && git commit -m ':tada:  init {$this->nova->name}'");
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . ".gitignore", $ignore);
+        shell_exec("git add . && git commit -m ':tada:  init {$this->nova->name}'");
     }
 
     private function initConfig()
@@ -129,7 +120,7 @@ return [
     ]
 ];
 EOF;
-        file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . $this->getDir("src/config.php"), $config);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $this->getDir("src/config.php"), $config);
     }
 
     private function initPublic(){
@@ -139,12 +130,12 @@ namespace app;
 require __DIR__ . '/../vendor/autoload.php';
 include __DIR__ . '/../nova/framework/bootstrap.php';
 EOF;
-        file_put_contents($this->projectDir . DIRECTORY_SEPARATOR . $this->getDir("src/public/index.php"), $index);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $this->getDir("src/public/index.php"), $index);
 
     }
     private function initFrameworkPHP(){
         $plugin = new PluginManager($this);
-        $plugin->addSubmodule("https://github.com/NovaPHPOrg/nova-framework",$this->workingDir."/src/nova/framework");
+        $plugin->addSubmodule("https://github.com/NovaPHPOrg/nova-framework","./src/nova/framework");
     }
     private function initFramework()
     {
