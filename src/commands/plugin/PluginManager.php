@@ -54,10 +54,18 @@ class PluginManager
         }
     }
 
-    function add($pluginName)
+    function getSaveName($pluginName){
+        if(str_contains($pluginName,"-")){
+            return str_split($pluginName,"-")[0];
+        }
+        return $pluginName;
+    }
+
+    function add($pluginName): void
     {
         $this->baseCommand->echoInfo("Installing plugin $pluginName...");
-        $this->addSubmodule("https://github.com/NovaPHPOrg/nova-$pluginName","./src/nova/plugin/$pluginName");
+
+        $this->addSubmodule("https://github.com/NovaPHPOrg/nova-$pluginName","./src/nova/plugin/{$this->getSaveName($pluginName)}");
         $this->baseCommand->echoInfo("Plugin $pluginName installed successfully.");
     }
 
