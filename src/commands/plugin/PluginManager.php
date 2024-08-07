@@ -79,7 +79,7 @@ class PluginManager
     function update()
     {
         $this->baseCommand->echoInfo("Updating plugins...");
-        exec("git submodule update --remote", $output, $returnVar);
+        exec("git submodule update --init  --remote  --force --recursive", $output, $returnVar);
         if ($returnVar !== 0) {
             $this->baseCommand->echoError("Failed to update plugins.");
             exit(1);
@@ -99,6 +99,7 @@ class PluginManager
         }
         $this->baseCommand->echoSuccess("Submodule added at '$path'.");
 
+        //git submodule update --init --force --recursive
         // 初始化并更新子模块
         exec("git submodule update --init --recursive", $output, $returnVar);
         if ($returnVar !== 0) {
