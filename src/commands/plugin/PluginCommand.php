@@ -33,7 +33,7 @@ class PluginCommand extends BaseCommand
                $pluginManager->list();
                break;
            case "add":
-               if (count($this->options) < 2)
+               if (count($this->options) < 1)
                    $this->echoError("Please specify the plugin name.");
                 else{
                     foreach ($this->options as $option) {
@@ -45,7 +45,7 @@ class PluginCommand extends BaseCommand
 
                break;
            case "remove":
-                if (count($this->options) < 2)
+                if (count($this->options) < 1)
                      $this->echoError("Please specify the plugin name.");
                 else {
                     foreach ($this->options as $option) {

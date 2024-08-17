@@ -56,7 +56,7 @@ class PluginManager
 
     function getSaveName($pluginName){
         if(str_contains($pluginName,"-")){
-            return str_split($pluginName,"-")[0];
+            return explode("-",$pluginName)[0];
         }
         return $pluginName;
     }
@@ -119,7 +119,6 @@ class PluginManager
             $this->baseCommand->echoSuccess("Submodule directory '$path' removed.");
         } else {
             $this->baseCommand->echoError("Submodule directory '$path' does not exist.");
-            exit(1);
         }
 
         // 从 .gitmodules 文件中移除子模块配置
