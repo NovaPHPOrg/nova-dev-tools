@@ -82,4 +82,23 @@ abstract class BaseCommand
         return $returnVar === 0;
     }
 
+    protected function copyDir(string $string, string $string1)
+    {
+        if (!is_dir($string1 )) {
+            mkdir($string1 , 0777, true);
+        }
+        $dir = opendir($string);
+        while ($file = readdir($dir)) {
+            if (($file != '.') && ($file != '..')) {
+                if (is_dir($string . DIRECTORY_SEPARATOR . $file)) {
+                    $this->copyDir($string . DIRECTORY_SEPARATOR . $file, $string1 . DIRECTORY_SEPARATOR . $file);
+                } else {
+
+                    copy($string . DIRECTORY_SEPARATOR . $file, $string1 . DIRECTORY_SEPARATOR . $file);
+                }
+            }
+        }
+        closedir($dir);
+    }
+
 }

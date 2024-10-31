@@ -4,6 +4,7 @@ namespace nova\commands\init;
 
 use nova\commands\BaseCommand;
 use nova\commands\plugin\PluginManager;
+use Phar;
 use const nova\SUPPORTED_PHP_VERSION;
 
 class InitCommand extends BaseCommand
@@ -29,22 +30,7 @@ class InitCommand extends BaseCommand
         $json = json_encode($this->nova, JSON_PRETTY_PRINT);
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", $json);
 
-        $dirs = [
-            "src",
-            "src/app", //应用程序目录
-            "src/public", //公共目录
-            "src/nova",//nova运行目录
-            //   "src/nova/framework",//nova框架目录
-            "src/nova/plugin",//nova插件目录
-            "src/runtime",//nova运行时目录
-            "tests",//测试目录
-        ];
-        foreach ($dirs as $dir) {
-            $dir = $this->getDir($dir);
-            mkdir($this->workingDir . DIRECTORY_SEPARATOR . $dir, 0777, true);
-            // 创建.gitkeep
-            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $dir . DIRECTORY_SEPARATOR . ".gitkeep", "");
-        }
+
 
         $this->initFramework();
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
@@ -87,59 +73,6 @@ EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", $composer);
     }
 
-    private function initIgnore(): void
-    {
-        $ignore = <<<EOF
-/vendor
-composer.lock
-/src/runtime
-EOF;
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . ".gitignore", $ignore);
-        shell_exec("git add . && git commit -m ':tada:  init {$this->nova->name}'");
-    }
-
-    private function initConfig(): void
-    {
-        $config = <<<EOF
-<?php
-return [
-    'debug'=>true,//当前是否为调试模式
-    'timezone'=>'Asia/Shanghai',//时区
-    'default_route'=>true,//启用默认路由，nova默认根据url自动解析到AnyModule/AnyController/AnyMethod方法，如果设置为false，则需要手动配置路由
-    'cache_driver' => 'nova\framework\cache\ApcuCacheDriver',//如果apcu不可用，则默认使用文件缓存
-    'render_engine' => 'nova\framework\render\SmartyRender',//默认使用smarty模板引擎
-    'domain'=>[
-        '0.0.0.0',//允许访问的域名
-    ],
-    'version'=>'',//版本号
-    'versionCode'=>1,//版本号
-    'db'=>[
-        'type'=>'mysql',
-        'host'=>'localhost',
-        'port'=>3306,
-        'username'=>'root',
-        'password'=>'root',
-        'db'=>'test',
-        'charset'=>'utf8mb4',
-    ]
-];
-EOF;
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $this->getDir("src/config.php"), $config);
-    }
-
-    private function initPublic(): void
-    {
-        $index = <<<EOF
-<?php
-namespace app;
-if(file_exists(__DIR__ . '/../vendor/autoload.php')){
-    require __DIR__ . '/../vendor/autoload.php';
-}
-include __DIR__ . '/../nova/framework/bootstrap.php';
-EOF;
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . $this->getDir("src/public/index.php"), $index);
-
-    }
     private function initFrameworkPHP(): void
     {
         $plugin = new PluginManager($this);
@@ -147,13 +80,19 @@ EOF;
     }
     private function initFramework(): void
     {
+        if (Phar::running()) {
+            // 如果在 .phar 中运行，使用 phar:// 协议进行访问
+            $sourceFile =  Phar::running() . DIRECTORY_SEPARATOR ;
+        } else {
+            // 如果未打包成 .phar，则直接使用文件系统路径
+            $sourceFile = '';
+        }
+        $this->copyDir($sourceFile.$this->getDir("../../init/project"),$this->workingDir);
         $this->initReadme();
         $this->initComposer();
-        $this->initPublic();
-        $this->initConfig();
         $this->initFrameworkPHP();
-        $this->initIgnore();
     }
+
 
     private function getProjectName(): string
     {

@@ -1,0 +1,13 @@
+{
+    "name": "auto",
+    "description": "A Nova project",
+    "version": "1.0.0",
+    "author": "Ankio",
+    "license": "MIT",
+    "scripts": {
+        "list": "php nova.phar plugin list",
+        "build": "php nova.phar build",
+        "test": "php nova.phar test"
+    },
+    "source": "\/src"
+}

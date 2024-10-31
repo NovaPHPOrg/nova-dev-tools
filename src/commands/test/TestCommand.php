@@ -36,7 +36,7 @@ class TestCommand extends BaseCommand
         $class = new $class($this);
         $methods = get_class_methods($class);
         foreach ($methods as $method) {
-            if (strpos($method, "test") === 0) {
+            if (str_starts_with($method, "test")) {
                 $class->$method();
             }
         }

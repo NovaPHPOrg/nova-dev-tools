@@ -1,0 +1,11 @@
+{
+    "name": "nova-dev-tools",
+    "description": "A Nova DevTools project",
+    "version": "2.0.0",
+    "author": "Ankio",
+    "license": "MIT",
+    "scripts": {
+
+    },
+    "source": "\/src"
+}

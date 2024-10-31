@@ -24,9 +24,13 @@ function help()
     echo "  init    - create an new nova project\n";
     echo "  build   - build nova project as an phar package or an zip archive\n";
     echo "  test    - test nova project\n";
-    echo "  plugin  <list>- list plugins of nova php\n";
+    echo "  plugin  <list> - list plugins of nova php\n";
     echo "  plugin  <add> <plugin-name> - install a plugin\n";
     echo "  plugin  <remove> <plugin-name> - uninstall a plugin\n";
+    echo "  ui  <init>    - create an new nova-admin ui project\n";
+    echo "  ui  <list>- list plugins of nova php\n";
+    echo "  ui  <add> <plugin-name> - install a plugin\n";
+    echo "  ui  <remove> <plugin-name> - uninstall a plugin\n";
 }
 
 
