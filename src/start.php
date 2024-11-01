@@ -1,9 +1,9 @@
 <?php
 namespace nova;
 use nova\commands\init\InitCommand;
-
-const VERSION = "1.0.0";
-const SUPPORTED_PHP_VERSION = "8.3.0";
+$config = require "config.php";
+define("nova\VERSION", $config['version']);
+define("nova\SUPPORTED_PHP_VERSION", $config['php_version']);
 // check php version
 if (version_compare(phpversion(), SUPPORTED_PHP_VERSION, '<')) {
     exit("This script requires PHP ".SUPPORTED_PHP_VERSION." or later.\n");
@@ -24,13 +24,14 @@ function help()
     echo "  init    - create an new nova project\n";
     echo "  build   - build nova project as an phar package or an zip archive\n";
     echo "  test    - test nova project\n";
+    echo "  update  - update all submodules\n";
     echo "  plugin  <list> - list plugins of nova php\n";
     echo "  plugin  <add> <plugin-name> - install a plugin\n";
     echo "  plugin  <remove> <plugin-name> - uninstall a plugin\n";
     echo "  ui  <init>    - create an new nova-admin ui project\n";
-    echo "  ui  <list>- list plugins of nova php\n";
-    echo "  ui  <add> <plugin-name> - install a plugin\n";
-    echo "  ui  <remove> <plugin-name> - uninstall a plugin\n";
+    echo "  ui  <list> - list components of nova php\n";
+    echo "  ui  <add> <component-name> - install a component\n";
+    echo "  ui  <remove> <component-name> - uninstall a component\n";
 }
 
 

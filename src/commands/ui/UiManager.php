@@ -1,11 +1,11 @@
 <?php
 
-namespace nova\commands\plugin;
+namespace nova\commands\ui;
 
 use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
 
-class PluginManager
+class UiManager
 {
     private BaseCommand $baseCommand;
     private GitCommand $command;
@@ -15,10 +15,11 @@ class PluginManager
         $this->command = new GitCommand($baseCommand);
     }
 
-    private string $orgName = "NovaPHPOrg";
-    function listGitHubRepos(): ?array
+    private string $orgName = "nova-ui";
+    function listGiteaRepos(): ?array
     {
-        $url = "https://api.github.com/orgs/$this->orgName/repos";
+        // https://git.ankio.net/api/v1/orgs/nova-ui/repos
+        $url = "https://git.ankio.net/api/v1/orgs/$this->orgName/repos";
         $opts = [
             "http" => [
                 "method" => "GET",
@@ -37,19 +38,16 @@ class PluginManager
         return json_decode($result, true);
     }
     private array $data = [];
-    function list()
+    function list(): void
     {
-        $list = $this->listGitHubRepos();
+        $list = $this->listGiteaRepos();
         if ($list === null) {
-            $this->baseCommand->echoError("Failed to fetch plugin list.");
+            $this->baseCommand->echoError("Failed to fetch components list.");
             return;
         }
         $this->data = [];
         $executed = [
-            "nova-server",
-            "nova",
-            "nova-framework",
-            "nova-dev-tools"
+            "framework",
         ];
         foreach ($list as $item){
             if (in_array($item["name"], $executed)){
@@ -70,24 +68,25 @@ class PluginManager
 
     function add($pluginName): void
     {
+
         if (empty($data)){
             $this->list();
         }
         if (!in_array($pluginName, $this->data)){
-            $this->baseCommand->echoError("Plugin $pluginName not found.");
+            $this->baseCommand->echoError("Component $pluginName not found.");
             return;
         }
-        $this->baseCommand->echoInfo("Installing plugin $pluginName...");
+        $this->baseCommand->echoInfo("Installing component $pluginName...");
 
-        $this->command->addSubmodule("https://github.com/NovaPHPOrg/nova-$pluginName","./src/nova/plugin/{$this->getSaveName($pluginName)}");
-        $this->baseCommand->echoInfo("Plugin $pluginName installed successfully.");
+        $this->command->addSubmodule("https://git.ankio.net/nova-ui/nova-$pluginName","./src/static/components/{$this->getSaveName($pluginName)}");
+        $this->baseCommand->echoInfo("Component $pluginName installed successfully.");
     }
 
-    function remove($pluginName)
+    function remove($pluginName): void
     {
-        $this->baseCommand->echoInfo("Uninstalling plugin $pluginName...");
-        $this->command->removeSubmodule("./src/nova/plugin/$pluginName");
-        $this->baseCommand->echoInfo("Plugin $pluginName uninstalled successfully.");
+        $this->baseCommand->echoInfo("Uninstalling component $pluginName...");
+        $this->command->removeSubmodule("./src/static/components/$pluginName");
+        $this->baseCommand->echoInfo("Component $pluginName uninstalled successfully.");
     }
 
 

@@ -38,22 +38,22 @@ abstract class BaseCommand
         }
     }
 
-    function echoWarn($message, $newLine = true)
+    function echoWarn($message, $newLine = true): void
     {
         $this->print($message,"bg_light_yellow", $newLine );
     }
 
-    function echoError($message, $newLine = true)
+    function echoError($message, $newLine = true): void
     {
         $this->print($message,"bg_light_red", $newLine );
     }
 
-    function echoSuccess($message, $newLine = true)
+    function echoSuccess($message, $newLine = true): void
     {
         $this->print($message,"light_green", $newLine );
     }
 
-    function echoInfo($message, $newLine = true)
+    function echoInfo($message, $newLine = true): void
     {
         $this->print($message,"light_blue", $newLine );
     }
@@ -82,7 +82,7 @@ abstract class BaseCommand
         return $returnVar === 0;
     }
 
-    protected function copyDir(string $string, string $string1)
+    protected function copyDir(string $string, string $string1): void
     {
         if (!is_dir($string1 )) {
             mkdir($string1 , 0777, true);

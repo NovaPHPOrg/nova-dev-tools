@@ -30,8 +30,6 @@ class InitCommand extends BaseCommand
         $json = json_encode($this->nova, JSON_PRETTY_PRINT);
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", $json);
 
-
-
         $this->initFramework();
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
     }
