@@ -95,7 +95,9 @@ EOF;
 
     private function getProjectName(): string
     {
-        $projectName = $this->prompt("项目名称: ");
+        //获取当前文件夹名称
+        $name  = basename(__DIR__);
+        $projectName = $this->prompt("项目名称: ",$name);
         $regex = "/^[a-z0-9_\-]+$/";
         if (!preg_match($regex, $projectName)) {
             $this->echoError("项目名只能包含小写字母、数字、下划线和破折号。");

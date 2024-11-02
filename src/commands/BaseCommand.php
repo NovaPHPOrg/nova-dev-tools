@@ -18,7 +18,7 @@ abstract class BaseCommand
     }
    protected function prompt($prompt_msg,$default = ""): string
    {
-        $this->echoInfo($prompt_msg,false);
+        $this->echoInfo("$prompt_msg(Default: $default)",false);
         $handle = fopen("php://stdin", "r");
         $line = fgets($handle);
         fclose($handle);
