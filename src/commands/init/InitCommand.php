@@ -96,7 +96,7 @@ EOF;
     private function getProjectName(): string
     {
         //获取当前文件夹名称
-        $name  = basename(__DIR__);
+        $name  = basename(getcwd());
         $projectName = $this->prompt("项目名称: ",$name);
         $regex = "/^[a-z0-9_\-]+$/";
         if (!preg_match($regex, $projectName)) {
