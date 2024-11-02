@@ -79,14 +79,14 @@ class UiManager
         }
         $this->baseCommand->echoInfo("Installing component $pluginName...");
 
-        $this->command->addSubmodule("https://git.ankio.net/nova-ui/nova-$pluginName","./src/static/components/{$this->getSaveName($pluginName)}");
+        $this->command->addSubmodule("https://git.ankio.net/nova-ui/nova-$pluginName","./src/app/static/components/{$this->getSaveName($pluginName)}");
         $this->baseCommand->echoInfo("Component $pluginName installed successfully.");
     }
 
     function remove($pluginName): void
     {
         $this->baseCommand->echoInfo("Uninstalling component $pluginName...");
-        $this->command->removeSubmodule("./src/static/components/$pluginName");
+        $this->command->removeSubmodule("./src/app/static/components/$pluginName");
         $this->baseCommand->echoInfo("Component $pluginName uninstalled successfully.");
     }
 
