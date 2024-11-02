@@ -3,6 +3,7 @@
 namespace nova\commands\init;
 
 use nova\commands\BaseCommand;
+use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
 use Phar;
 use const nova\SUPPORTED_PHP_VERSION;
@@ -73,8 +74,8 @@ EOF;
 
     private function initFrameworkPHP(): void
     {
-        $plugin = new PluginManager($this);
-        $plugin->addSubmodule("https://github.com/NovaPHPOrg/nova-framework","./src/nova/framework");
+        $git = new GitCommand($this);
+        $git->addSubmodule("https://github.com/NovaPHPOrg/nova-framework","./src/nova/framework");
     }
     private function initFramework(): void
     {
