@@ -3,6 +3,7 @@
 namespace nova\commands\plugin;
 
 use nova\commands\BaseCommand;
+use nova\commands\ConfigUtils;
 use nova\commands\GitCommand;
 
 class PluginManager
@@ -81,10 +82,45 @@ class PluginManager
 
         $this->command->addSubmodule("https://github.com/NovaPHPOrg/nova-$pluginName","./src/nova/plugin/{$this->getSaveName($pluginName)}");
         $this->baseCommand->echoInfo("Plugin $pluginName installed successfully.");
+        // 判断是否有package.php
+        $file = "./src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
+        if (file_exists($file)){
+            $config = include $file;
+            // return [
+            //    "config"=>[
+            //        "framework.start"=>[
+            //            "nova\\plugin\\task\\Task",
+            //        ]
+            //    ]
+            //];
+            if (isset($config['config'])){
+                $conf = new ConfigUtils();
+                $conf->merge($config['config']);
+            }
+            if (isset($config["require"])){
+                foreach ($config["require"] as $item){
+                    $this->add($item);
+                }
+            }
+        }
     }
 
-    function remove($pluginName)
+    function remove($pluginName): void
     {
+        $file = "./src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
+        if (file_exists($file)) {
+            $config = include $file;
+            if (isset($config['config'])){
+                $conf = new ConfigUtils();
+                $conf->remove_keys($config['config']);
+            }
+            if (isset($config["require"])){
+                foreach ($config["require"] as $item){
+                    $this->remove($item);
+                }
+            }
+
+        }
         $this->baseCommand->echoInfo("Uninstalling plugin $pluginName...");
         $this->command->removeSubmodule("./src/nova/plugin/$pluginName");
         $this->baseCommand->echoInfo("Plugin $pluginName uninstalled successfully.");
