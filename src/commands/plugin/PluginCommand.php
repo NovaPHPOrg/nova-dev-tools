@@ -13,7 +13,6 @@ class PluginCommand extends BaseCommand
         $this->echoInfo("  list: List all available plugins.");
         $this->echoInfo("  add [pluginName]: Add a plugin.");
         $this->echoInfo("  remove [pluginName]: Remove a plugin.");
-        $this->echoInfo("  update: Update all plugins.");
     }
 
     public function init(): void
@@ -33,7 +32,7 @@ class PluginCommand extends BaseCommand
                $pluginManager->list();
                break;
            case "add":
-               if (count($this->options) < 2)
+               if (count($this->options) < 1)
                    $this->echoError("Please specify the plugin name.");
                 else{
                     foreach ($this->options as $option) {
@@ -45,7 +44,7 @@ class PluginCommand extends BaseCommand
 
                break;
            case "remove":
-                if (count($this->options) < 2)
+                if (count($this->options) < 1)
                      $this->echoError("Please specify the plugin name.");
                 else {
                     foreach ($this->options as $option) {
@@ -53,9 +52,6 @@ class PluginCommand extends BaseCommand
                         $pluginManager->remove($option);
                     }
                 }
-               break;
-           case "update":
-               $pluginManager->update();
                break;
            default:
                 $this->help();

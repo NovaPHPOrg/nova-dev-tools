@@ -83,7 +83,7 @@ class PluginManager
         $this->command->addSubmodule("https://github.com/NovaPHPOrg/nova-$pluginName","./src/nova/plugin/{$this->getSaveName($pluginName)}");
         $this->baseCommand->echoInfo("Plugin $pluginName installed successfully.");
         // 判断是否有package.php
-        $file = "./src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
+        $file = getcwd()."/src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
         if (file_exists($file)){
             $config = include $file;
             // return [
@@ -107,7 +107,7 @@ class PluginManager
 
     function remove($pluginName): void
     {
-        $file = "./src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
+        $file = getcwd()."/src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
         if (file_exists($file)) {
             $config = include $file;
             if (isset($config['config'])){

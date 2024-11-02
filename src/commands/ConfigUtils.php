@@ -4,7 +4,7 @@ namespace nova\commands;
 
 class ConfigUtils
 {
-    private array $config = [];
+    private array $config;
     private string $file;
 
     public function __construct()

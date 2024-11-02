@@ -8,14 +8,4 @@ return [
         '0.0.0.0',//允许访问的域名
     ],
     'version'=>'',//版本号
-    'versionCode'=>1,//版本号
-    'db'=>[
-        'type'=>'mysql',
-        'host'=>'localhost',
-        'port'=>3306,
-        'username'=>'root',
-        'password'=>'root',
-        'db'=>'test',
-        'charset'=>'utf8mb4',
-    ]
 ];

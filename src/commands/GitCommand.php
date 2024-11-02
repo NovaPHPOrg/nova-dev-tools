@@ -30,7 +30,7 @@ class GitCommand
             exit(1);
         }
         // 拉取子模块
-        $command = "git submodule add $submoduleUrl $path";
+        $command = "git submodule add --force  $submoduleUrl $path";
         exec($command, $output, $returnVar);
         if ($returnVar !== 0) {
             $this->baseCommand->echoError("Failed to add submodule.");

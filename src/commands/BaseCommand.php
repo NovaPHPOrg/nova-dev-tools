@@ -81,7 +81,10 @@ abstract class BaseCommand
         exec($command, $output, $returnVar);
         return $returnVar === 0;
     }
-
+    protected function getDir($dir): string
+    {
+        return str_replace("/", DIRECTORY_SEPARATOR, $dir);
+    }
     protected function copyDir(string $string, string $string1): void
     {
         if (!is_dir($string1 )) {

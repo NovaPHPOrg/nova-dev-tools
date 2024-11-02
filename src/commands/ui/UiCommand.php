@@ -3,7 +3,9 @@
 namespace nova\commands\ui;
 
 use nova\commands\BaseCommand;
+use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
+use Phar;
 
 class UiCommand extends BaseCommand
 {
@@ -30,11 +32,23 @@ class UiCommand extends BaseCommand
        $condition =  array_shift($this->options);
 
        switch ($condition){
+           case "init":
+               if (Phar::running()) {
+                   // 如果在 .phar 中运行，使用 phar:// 协议进行访问
+                   $sourceFile =  Phar::running() . DIRECTORY_SEPARATOR ;
+               } else {
+                   // 如果未打包成 .phar，则直接使用文件系统路径
+                   $sourceFile = '';
+               }
+               $this->copyDir($sourceFile.$this->getDir("../../init/ui"),$this->workingDir);
+               $git = new GitCommand($this);
+               $git->addSubmodule("https://git.ankio.net/nova-ui/framework","./src/app/static/framework");
+               break;
            case "list":
                $pluginManager->list();
                break;
            case "add":
-               if (count($this->options) < 2)
+               if (count($this->options) < 1)
                    $this->echoError("Please specify the component name.");
                 else{
                     foreach ($this->options as $option) {
@@ -44,7 +58,7 @@ class UiCommand extends BaseCommand
                 }
                break;
            case "remove":
-                if (count($this->options) < 2)
+                if (count($this->options) < 1)
                      $this->echoError("Please specify the component name.");
                 else {
                     foreach ($this->options as $option) {

@@ -4,6 +4,7 @@ namespace nova\commands\ui;
 
 use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
+use Phar;
 
 class UiManager
 {

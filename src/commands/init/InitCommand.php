@@ -34,10 +34,7 @@ class InitCommand extends BaseCommand
         $this->initFramework();
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
     }
-    private function getDir($dir): string
-    {
-        return str_replace("/", DIRECTORY_SEPARATOR, $dir);
-    }
+
     private function initReadme(): void
     {
         // 创建README.md
