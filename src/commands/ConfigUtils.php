@@ -163,14 +163,23 @@ class ConfigUtils
     /**
      * 递归合并配置数组
      * @param array $target 目标数组
-     * @param array $source ���数组
+     * @param array $source 源数组
      * @return array
      */
     private function mergeArrays(array $target, array $source): array
     {
         foreach ($source as $key => $value) {
-            if (is_array($value) && isset($target[$key]) && is_array($target[$key])) {
-                $target[$key] = $this->mergeArrays($target[$key], $value);
+            if (is_array($value)) {
+                if (!isset($target[$key]) || !is_array($target[$key])) {
+                    $target[$key] = [];
+                }
+                if (array_is_list($value)) {
+                    // 如果是索引数组，则合并数组
+                    $target[$key] = array_merge($target[$key], $value);
+                } else {
+                    // 如果是关联数组，则递归合并
+                    $target[$key] = $this->mergeArrays($target[$key], $value);
+                }
             } else {
                 $target[$key] = $value;
             }

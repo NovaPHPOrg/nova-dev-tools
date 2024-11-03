@@ -96,7 +96,9 @@ class PluginManager
             if (isset($config['config'])){
                 $conf = new ConfigUtils();
                 $conf->merge($config['config']);
+                unset($conf);
             }
+
             if (isset($config["require"])){
                 foreach ($config["require"] as $item){
                     $this->add($item);
@@ -113,6 +115,7 @@ class PluginManager
             if (isset($config['config'])){
                 $conf = new ConfigUtils();
                 $conf->remove_keys($config['config']);
+                unset($conf);
             }
             if (isset($config["require"])){
                 foreach ($config["require"] as $item){
