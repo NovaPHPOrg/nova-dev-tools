@@ -20,6 +20,18 @@ class TestCommand extends BaseCommand
 
         $tests = glob($dir. "*Test.php");
 
+        if (count($tests) === 0) {
+            $this->echoError("No tests found.");
+            return;
+        }
+
+        if (count($this->options) > 0) {
+            $tests = array_filter($tests, function ($test) {
+                return in_array(str_replace("Test.php","",basename($test)), $this->options);
+            });
+        }
+
+
         foreach ($tests as $test) {
             $this->runTest($test);
         }
@@ -34,11 +46,6 @@ class TestCommand extends BaseCommand
         require $test;
         $class = "tests\\" . basename($test, ".php");
         $class = new $class($this);
-        $methods = get_class_methods($class);
-        foreach ($methods as $method) {
-            if (str_starts_with($method, "test")) {
-                $class->$method();
-            }
-        }
+        $class->test();
     }
 }

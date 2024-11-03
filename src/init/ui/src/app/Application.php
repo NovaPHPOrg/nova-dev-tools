@@ -1,6 +1,6 @@
 <?php
 
-namespace nova\init\ui\src\app;
+namespace app;
 
 use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
@@ -11,7 +11,7 @@ use nova\framework\request\RouteObject;
 use nova\plugin\minify\NovaMinify;
 use nova\plugin\task\Task;
 use function nova\framework\route;
-use const app\ROOT_PATH;
+use const ROOT_PATH;
 
 class Application implements iApplication
 {

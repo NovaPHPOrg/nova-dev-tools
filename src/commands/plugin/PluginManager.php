@@ -64,7 +64,8 @@ class PluginManager
 
     function getSaveName($pluginName){
         if(str_contains($pluginName,"-")){
-            return str_split($pluginName,"-")[0];
+            $result = explode("-", $pluginName, 2);
+            return $result[0];
         }
         return $pluginName;
     }

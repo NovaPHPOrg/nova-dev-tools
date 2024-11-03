@@ -6,9 +6,10 @@ use AssertionError;
 
 
 
-class TestCase
+abstract class TestCase
 {
 
+    abstract function test();
     private $baseCommand;
 public function __construct($baseCommand)
     {
