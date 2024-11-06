@@ -43,6 +43,7 @@ class UiCommand extends BaseCommand
                $this->copyDir($sourceFile.$this->getDir("../../init/ui"),$this->workingDir);
                $git = new GitCommand($this);
                $git->addSubmodule("https://git.ankio.net/nova-ui/framework","./src/app/static/framework");
+               exec("ln -s ./src/app/static ./static");
                break;
            case "list":
                $pluginManager->list();
