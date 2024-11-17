@@ -13,7 +13,7 @@ class GitCommand
     function updateSubmodules(): void
     {
         $this->baseCommand->echoInfo("Updating all submodules...");
-        exec("git submodule update --init  --remote  --force --recursive", $output, $returnVar);
+        exec("git submodule update  --remote  --force --recursive", $output, $returnVar);
         if ($returnVar !== 0) {
             $this->baseCommand->echoError("Failed to update submodule.");
             exit(1);
