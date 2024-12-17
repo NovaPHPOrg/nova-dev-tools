@@ -3,7 +3,7 @@
 namespace nova\commands\test;
 
 use AssertionError;
-
+use nova\framework\event\EventManager;
 
 
 abstract class TestCase
@@ -44,6 +44,16 @@ public function __construct($baseCommand)
 
 
         include_once "$workingDir/src/nova/framework/constants.php";
+
+        $this->initEvent();
+    }
+
+    function initEvent()
+    {
+        $ref = new \ReflectionClass('nova\framework\event\EventManager');
+        $ref->getMethod('register')->invoke(null);
+        // EventManager::trigger("framework.start", $this);
+        $ref->getMethod('trigger')->invoke(null,"framework.start");
     }
     function checkObj($obj1,$obj2)
     {
