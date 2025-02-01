@@ -42,7 +42,7 @@ class UiCommand extends BaseCommand
                }
                $this->copyDir($sourceFile.$this->getDir("../../init/ui"),$this->workingDir);
                $git = new GitCommand($this);
-               $git->addSubmodule("https://git.ankio.net/nova-ui/framework","./src/app/static/framework");
+               $git->addSubmodule("https://git.ankio.icu/nova-ui/framework","./src/app/static/framework");
                $link = "ln -s ./src/app/static ./static";
                // 如果是windows系统，使用mklink命令
                 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {

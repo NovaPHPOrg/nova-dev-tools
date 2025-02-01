@@ -20,7 +20,7 @@ class UiManager
     function listGiteaRepos(): ?array
     {
         // https://git.ankio.net/api/v1/orgs/nova-ui/repos
-        $url = "https://git.ankio.net/api/v1/orgs/$this->orgName/repos";
+        $url = "https://git.ankio.icu/api/v1/orgs/$this->orgName/repos";
         $opts = [
             "http" => [
                 "method" => "GET",
@@ -79,7 +79,7 @@ class UiManager
         }
         $this->baseCommand->echoInfo("Installing component $pluginName...");
 
-        $this->command->addSubmodule("https://git.ankio.net/nova-ui/nova-$pluginName","./src/app/static/components/{$this->getSaveName($pluginName)}");
+        $this->command->addSubmodule("https://git.ankio.icu/nova-ui/nova-$pluginName","./src/app/static/components/{$this->getSaveName($pluginName)}");
         $this->baseCommand->echoInfo("Component $pluginName installed successfully.");
     }
 
