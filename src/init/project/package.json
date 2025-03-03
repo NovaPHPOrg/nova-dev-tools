@@ -7,7 +7,9 @@
     "scripts": {
         "list": "php nova.phar plugin list",
         "build": "php nova.phar build",
-        "test": "php nova.phar test"
+        "test": "php nova.phar test",
+        "start": "php -c src/nova/plugin/workerman/cli-php.ini src/nova/plugin/workerman/bootstrap.php start",
+        "fix": "php php-cs-fixer-v3.phar fix src --allow-risky=yes"
     },
     "source": "\/src"
 }
