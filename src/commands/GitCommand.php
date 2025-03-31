@@ -13,13 +13,64 @@ class GitCommand
     function updateSubmodules(): void
     {
         $this->baseCommand->echoInfo("Updating all submodules...");
-        exec("git submodule update  --remote  --force --recursive", $output, $returnVar);
+
+        exec("git submodule update --remote --force --recursive", $output, $returnVar);
         if ($returnVar !== 0) {
-            $this->baseCommand->echoError("Failed to update submodule.");
+            $this->baseCommand->echoError("Failed to update submodules.");
             exit(1);
         }
 
-        $this->baseCommand->echoInfo("Submodule updated successfully.");
+        $gitmodules = parse_ini_file('.gitmodules', true, INI_SCANNER_TYPED);
+
+        foreach ($gitmodules as $section => $config) {
+            if (!isset($config['path'])) {
+                continue;
+            }
+
+            $path = $config['path'];
+            $this->baseCommand->echoInfo("Processing submodule at '$path'...");
+
+            // Step 1: 获取 remote show origin 的输出（不使用 grep）
+            $command = 'cd ' . escapeshellarg($path) . ' && git remote show origin';
+            $remoteInfo = [];
+            exec($command, $remoteInfo, $code);
+
+            if ($code !== 0) {
+                $this->baseCommand->echoWarn("Failed to read remote info in '$path'.");
+                continue;
+            }
+
+            // Step 2: 手动在 PHP 中找出 HEAD 分支
+            $branch = null;
+            foreach ($remoteInfo as $line) {
+                if (preg_match('/HEAD .*?[:：]\s*(.+)$/iu', $line, $matches)) {
+                    $branch = trim($matches[1]);
+                    $this->baseCommand->echoInfo("Detected default branch: '$branch'");
+                    break;
+                }
+            }
+
+
+            if (!$branch) {
+                $this->baseCommand->echoWarn("Could not determine default branch for submodule '$path'.");
+                continue;
+            }
+
+            // Step 3: checkout 到远程分支
+            $checkoutCmd = 'cd ' . escapeshellarg($path)
+                . ' && git fetch origin'
+                . ' && git checkout -B ' . escapeshellarg($branch) . ' origin/' . escapeshellarg($branch);
+
+            exec($checkoutCmd, $out, $code);
+
+            if ($code !== 0) {
+                $this->baseCommand->echoWarn("Failed to checkout '$branch' in '$path'.");
+            } else {
+                $this->baseCommand->echoSuccess("Submodule '$path' attached to branch '$branch'.");
+            }
+        }
+
+        $this->baseCommand->echoInfo("All submodules processed.");
     }
 
     function addSubmodule(string $submoduleUrl, string $path): void
