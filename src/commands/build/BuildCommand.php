@@ -32,8 +32,9 @@ class BuildCommand extends BaseCommand
         //修改config.php的版本号，并将config.php重命名为config.php.example
         $config = include $this->output . DIRECTORY_SEPARATOR . "config.php";
         $config["version"] = $version;
+        $config["debug"] = false;
         $config = "<?php\nreturn " . var_export($config, true) . ";";
-        file_put_contents($this->output . DIRECTORY_SEPARATOR  . "config.php.example", $config);
+        file_put_contents($this->output . DIRECTORY_SEPARATOR  . "example.config.php", $config);
         unlink($this->output . DIRECTORY_SEPARATOR . "config.php");
        // 清空src/runtime目录
         $this->removePath($this->output . DIRECTORY_SEPARATOR . "runtime");
