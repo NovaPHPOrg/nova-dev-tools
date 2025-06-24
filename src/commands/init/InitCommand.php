@@ -24,12 +24,13 @@ class InitCommand extends BaseCommand
         $this->nova->description = $this->prompt("请输入项目描述: ",$this->nova->description);
         $this->nova->author = $this->prompt("请输入作者: ", $this->nova->author);
         $this->nova->license = $this->prompt("请输入许可证: ",$this->nova->license);
+        $this->nova->require = ["php"=>">=".SUPPORTED_PHP_VERSION ];
         // 创建项目目录
         // 初始化git
         shell_exec("git init");
         // 创建nova.json
-        $json = json_encode($this->nova, JSON_PRETTY_PRINT);
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", $json);
+        $json = $this->nova->toComposerArray();
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", $json);
 
         $this->initFramework();
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
@@ -47,27 +48,7 @@ class InitCommand extends BaseCommand
 EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "README.md", $readme);
     }
-    private function initComposer(): void
-    {
-        $composer = json_encode([
-            "name" => "app/".$this->nova->name,
-            "description" => $this->nova->description,
-            "version" => $this->nova->version,
-            "authors" => [
-                $this->nova->author
-            ],
-            "license" => $this->nova->license,
-            "require" => [
-                "php" => ">=".SUPPORTED_PHP_VERSION
-            ],
-            "autoload" => [
-                "psr-4" => [
-                    "app\\" => "src/app"
-                ]
-            ]
-        ], JSON_PRETTY_PRINT);
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", $composer);
-    }
+
 
     private function initFrameworkPHP(): void
     {
@@ -85,7 +66,6 @@ EOF;
         }
         $this->copyDir($sourceFile.$this->getDir("../../init/project"),$this->workingDir);
         $this->initReadme();
-        $this->initComposer();
         $this->initFrameworkPHP();
     }
 
