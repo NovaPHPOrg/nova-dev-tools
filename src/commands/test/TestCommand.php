@@ -9,14 +9,17 @@ class TestCommand extends BaseCommand
 
     public function init()
     {
+
+
         $this->echoInfo("Running tests...");
         //查找tests文件夹里面所有以.test.php结尾的文件
         $dir = $this->workingDir . DIRECTORY_SEPARATOR . "tests" . DIRECTORY_SEPARATOR;
-        $this->echoInfo("Tests found in: " . $dir);
+        $this->echoInfo("Found any Tests in: " . $dir);
         if (!is_dir($dir)) {
             $this->echoError("No tests found.");
             return;
         }
+
 
         $tests = glob($dir. "*Test.php");
 
@@ -33,6 +36,9 @@ class TestCommand extends BaseCommand
 
 
         foreach ($tests as $test) {
+
+            $this->echoInfo("Run test file: " . $test);
+
             $this->runTest($test);
         }
 
