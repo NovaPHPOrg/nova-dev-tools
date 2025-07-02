@@ -17,26 +17,45 @@ class PluginManager
     }
 
     private string $orgName = "NovaPHPOrg";
+    /**
+     * 列出某个 GitHub 组织的公开仓库
+     *
+     * @return array|null  成功返回数组，失败返回 null
+     */
     function listGitHubRepos(): ?array
     {
-        $url = "https://api.github.com/orgs/$this->orgName/repos";
-        $opts = [
-            "http" => [
-                "method" => "GET",
-                "header" => [
-                    "User-Agent: PHP",
-                ]
-            ]
-        ];
-        $context = stream_context_create($opts);
+        $url = "https://api.github.com/orgs/{$this->orgName}/repos";
 
-        $result = @file_get_contents($url, false, $context);
-        if ($result === FALSE) {
+        $ch = curl_init($url);
+
+        $headers = [
+            'User-Agent: PHP',
+            // 'Authorization: Bearer YOUR_GITHUB_TOKEN', // ← 如需鉴权取消注释
+            'Accept: application/vnd.github+json',
+        ];
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,   // 返回字符串而不是直接输出
+            CURLOPT_TIMEOUT        => 10,     // 超时 10 秒
+            CURLOPT_HTTPHEADER     => $headers,
+            // ———— 若遇到证书问题可用以下两行临时跳过，生产环境应保留校验 ————
+             CURLOPT_SSL_VERIFYPEER => false,
+             CURLOPT_SSL_VERIFYHOST => 0,
+        ]);
+
+        $response = curl_exec($ch);
+        $errno    = curl_errno($ch);
+
+        curl_close($ch);
+
+        if ($errno !== 0 || $response === false) {
+            // 可在此记录日志：curl_strerror($errno)
             return null;
         }
 
-        return json_decode($result, true);
+        return json_decode($response, true);
     }
+
     private array $data = [];
     function list()
     {
