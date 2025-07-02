@@ -30,7 +30,7 @@ class InitCommand extends BaseCommand
         shell_exec("git init");
         // 创建nova.json
         $json = $this->nova->toComposerArray();
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", $json);
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", json_encode($json));
 
         $this->initFramework();
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
