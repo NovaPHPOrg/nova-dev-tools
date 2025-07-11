@@ -1,6 +1,13 @@
 <?php
+
+
 // 创建Phar对象
 $pharFile = 'nova.phar';
+
+if(file_exists($pharFile)) {
+    unlink($pharFile);
+}
+
 $phar = new Phar($pharFile, 0, $pharFile);
 
 // 设置压缩算法

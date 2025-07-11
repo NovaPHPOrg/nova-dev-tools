@@ -33,9 +33,9 @@ class InitCommand extends BaseCommand
         shell_exec("git init");
         // 创建nova.json
         $json = $this->nova->toComposerArray();
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES ));
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE ));
         if($composer == "y"){
-            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
             shell_exec("composer install");
         }
         $this->initFramework();
