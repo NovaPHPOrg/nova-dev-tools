@@ -24,6 +24,7 @@ function help()
     echo "  init    - create an new nova project\n";
     echo "  build   - build nova project as an phar package or an zip archive\n";
     echo "  test <name>   - test nova project\n";
+    echo "  fix     - fix code\n";
     echo "  update  - update all submodules\n";
     echo "  plugin  <list> - list plugins of nova php\n";
     echo "  plugin  <add> <plugin-name> - install a plugin\n";

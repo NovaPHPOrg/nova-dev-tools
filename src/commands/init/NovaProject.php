@@ -37,75 +37,29 @@ class NovaProject
      * 项目类型 (project/library)
      */
     public string $type = "project";
-    
-    /**
-     * 关键词
-     */
-    public array $keywords = ["nova", "php", "framework"];
-    
-    /**
-     * 项目主页
-     */
-    public string $homepage = "";
-    
-    /**
-     * 支持信息
-     */
-    public array $support = [
-        "issues" => "",
-        "source" => "",
-        "docs" => ""
-    ];
+
 
 
     public array $config = [
         "vendor-dir" => "/src/vendor",
     ];
     
-    /**
-     * 最低稳定性
-     */
-    public string $minimumStability = "stable";
-    
-    /**
-     * 偏好稳定版本
-     */
-    public bool $preferStable = true;
-    
+
     /**
      * 依赖包
      */
-    public array $require = [
-        "php" => ">=8.0"
-    ];
-    
-    /**
-     * 开发依赖
-     */
-    public array $requireDev = [];
-    
+    public array $require = [];
+
     /**
      * 自动加载配置
      */
     public array $autoload = [
         "psr-4" => [
-            "app\\" => "src/app"
+            'app\\' => "src/app"
         ],
-        "psr-0" => [],
-        "classmap" => [],
-        "files" => []
     ];
     
-    /**
-     * 开发环境自动加载
-     */
-    public array $autoloadDev = [
-        "psr-4" => [],
-        "psr-0" => [],
-        "classmap" => [],
-        "files" => []
-    ];
- 
+
     
     /**
      * 源代码目录
@@ -122,16 +76,11 @@ class NovaProject
             "description" => $this->description,
             "version" => $this->version,
             "type" => $this->type,
-            "keywords" => $this->keywords,
             "license" => $this->license,
             "authors" => $this->parseAuthors(),
             "require" => $this->require,
-            "require-dev" => $this->requireDev,
             "autoload" => $this->autoload,
-            "autoload-dev" => $this->autoloadDev,
             "config" => $this->config,
-            "minimum-stability" => $this->minimumStability,
-            "prefer-stable" => $this->preferStable
         ];
         
         // 添加可选字段
@@ -151,7 +100,7 @@ class NovaProject
      */
     protected function getComposerName(): string
     {
-        return "app/" . $this->name;
+        return  $this->name;
     }
     
     /**

@@ -5,6 +5,7 @@ namespace nova\commands\init;
 use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
+use nova\commands\ui\UiCommand;
 use Phar;
 use const nova\SUPPORTED_PHP_VERSION;
 
@@ -24,15 +25,29 @@ class InitCommand extends BaseCommand
         $this->nova->description = $this->prompt("请输入项目描述: ",$this->nova->description);
         $this->nova->author = $this->prompt("请输入作者: ", $this->nova->author);
         $this->nova->license = $this->prompt("请输入许可证: ",$this->nova->license);
+        $novaUI = $this->prompt("使用NovaUI框架(y/n): ","n");
+        $composer = $this->prompt("使用Composer(y/n): ","n");
         $this->nova->require = ["php"=>">=".SUPPORTED_PHP_VERSION ];
         // 创建项目目录
         // 初始化git
         shell_exec("git init");
         // 创建nova.json
         $json = $this->nova->toComposerArray();
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", json_encode($json));
-
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES ));
+        if($composer == "y"){
+            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            shell_exec("composer install");
+        }
         $this->initFramework();
+
+        if($novaUI == "y"){
+            $uiCommand = new UiCommand($this->workingDir,["init"]);
+            $uiCommand->init();
+        }
+
+        shell_exec("git add -A ");
+        shell_exec("git commit -m \":tada: project init\"");
+
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
     }
 
