@@ -14,8 +14,7 @@ class GitCommand
     {
         $this->baseCommand->echoInfo("Updating all submodules...");
 
-        exec("git submodule update --remote --force --recursive", $output, $returnVar);
-        if ($returnVar !== 0) {
+        if (!$this->baseCommand->exec("git submodule update --remote --force --recursive")) {
             $this->baseCommand->echoError("Failed to update submodules.");
             exit(1);
         }
@@ -31,14 +30,15 @@ class GitCommand
             $this->baseCommand->echoInfo("Processing submodule at '$path'...");
 
             // Step 1: 获取 remote show origin 的输出（不使用 grep）
-            $command = 'cd ' . escapeshellarg($path) . ' && git remote show origin';
-            $remoteInfo = [];
-            exec($command, $remoteInfo, $code);
+            $command = 'git remote show origin';
+            $result = $this->baseCommand->exec($command, $path);
 
-            if ($code !== 0) {
+
+            if (!$result) {
                 $this->baseCommand->echoWarn("Failed to read remote info in '$path'.");
                 continue;
             }
+            $remoteInfo =  explode("\n", $result);
 
             // Step 2: 手动在 PHP 中找出 HEAD 分支
             $branch = null;

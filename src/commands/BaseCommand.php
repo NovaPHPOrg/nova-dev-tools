@@ -77,9 +77,7 @@ abstract class BaseCommand
             // UNIX-like系统删除目录和文件命令
             $command = "rm -rf \"$path\"";
         }
-
-        exec($command, $output, $returnVar);
-        return $returnVar === 0;
+        return $this->exec($command)!==false;
     }
     protected function getDir($dir): string
     {
@@ -102,6 +100,52 @@ abstract class BaseCommand
             }
         }
         closedir($dir);
+    }
+
+     function exec($command,$dir = null):bool|string
+    {
+// ── 1. 定义要捕获的管道 ──
+        $descriptorspec = [
+            1 => ['pipe', 'w'],   // stdout
+            2 => ['pipe', 'w'],   // stderr
+        ];
+
+        // ── 2. 启动子进程 ──
+        $process = proc_open(
+            $command,
+            $descriptorspec,
+            $pipes,
+            $dir        // 这里指定 cwd，无需再 chdir()
+        );
+
+        if (!is_resource($process)) {
+            $this->echoError("无法启动进程");
+            exit(1);
+        }
+
+        // ── 3. 读取输出 ──
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        // ── 4. 取退出码并关闭进程句柄 ──
+        $returnVar = proc_close($process);
+        // 正常情况下把 git 的 stdout 列出来
+        if ($stdout !== '') {
+            $this->echoInfo($stdout);
+        }
+        // ── 5. 按结果输出信息 ──
+        if( $stderr !== '') {
+            $this->echoError("Command run failed.");
+            $this->echoError($stderr);      // 打印 git 的错误输出
+            return false;
+        }
+
+
+        $this->echoSuccess("Command run success.");
+        return $stdout;
+
     }
 
 }

@@ -33,7 +33,7 @@ function help()
     echo "  ui  <list> - list components of nova php\n";
     echo "  ui  <add> <component-name> - install a component\n";
     echo "  ui  <remove> <component-name> - uninstall a component\n";
-    echo "  refresh  <dir> - force update git index\n";
+    echo "  refresh  - force update git index\n";
 }
 
 
