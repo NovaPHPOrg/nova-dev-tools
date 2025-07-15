@@ -102,50 +102,46 @@ abstract class BaseCommand
         closedir($dir);
     }
 
-     function exec($command,$dir = null):bool|string
+    function exec($command, $dir = null): bool|string
     {
-// ── 1. 定义要捕获的管道 ──
+        $this->echoInfo("执行命令：$command");
+
         $descriptorspec = [
-            1 => ['pipe', 'w'],   // stdout
-            2 => ['pipe', 'w'],   // stderr
+            1 => ['pipe', 'w'], // stdout
+            2 => ['pipe', 'w'], // stderr
         ];
 
-        // ── 2. 启动子进程 ──
-        $process = proc_open(
-            $command,
-            $descriptorspec,
-            $pipes,
-            $dir        // 这里指定 cwd，无需再 chdir()
-        );
+        $process = proc_open($command, $descriptorspec, $pipes, $dir);
 
         if (!is_resource($process)) {
             $this->echoError("无法启动进程");
-            exit(1);
-        }
-
-        // ── 3. 读取输出 ──
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        // ── 4. 取退出码并关闭进程句柄 ──
-        $returnVar = proc_close($process);
-        // 正常情况下把 git 的 stdout 列出来
-        if ($stdout !== '') {
-            $this->echoInfo($stdout);
-        }
-        // ── 5. 按结果输出信息 ──
-        if( $stderr !== '') {
-            $this->echoError("Command run failed.");
-            $this->echoError($stderr);      // 打印 git 的错误输出
             return false;
         }
 
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
 
-        $this->echoSuccess("Command run success.");
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        $exitCode = proc_close($process);
+
+        if ($stdout !== '') {
+            $this->echoInfo("STDOUT:\n" . trim($stdout));
+        }
+
+        if ($stderr !== '') {
+            $this->echoInfo("STDERR:\n" . trim($stderr)); // 不一定是失败，改成 info 级别
+        }
+
+        if ($exitCode !== 0) {
+            $this->echoError("命令执行失败，退出码：$exitCode");
+            return false;
+        }
+
+        $this->echoSuccess("命令执行成功");
         return $stdout;
-
     }
+
 
 }

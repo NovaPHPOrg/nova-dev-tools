@@ -12,23 +12,55 @@ class RefreshCommand extends BaseCommand
 
         $this->rebuildGitmodules();
         $this->refreshModules();
-        $this->relink();
+       // $this->relink();
     }
 
     function relink(): void
     {
-        $dir = "src/app/static";
+        $dir = "src" . DIRECTORY_SEPARATOR . "app" . DIRECTORY_SEPARATOR . "static";
         $target = "static";
 
-        if(file_exists($target)){
-            unlink($target);
+        // 如果目标已存在（不论是链接、文件、目录），都处理掉
+        if (file_exists($target) || is_link($target)) {
+            if (is_link($target) || is_file($target)) {
+                unlink($target);
+                $this->echoInfo("已删除旧的文件或符号链接：$target");
+            } elseif (is_dir($target)) {
+                $this->deleteDir($target);
+                $this->echoInfo("已删除旧的目录：$target");
+            }
         }
-        $link = "ln -s $dir $target";
-        // 如果是windows系统，使用mklink命令
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $link = "mklink /D $target $dir";
+
+        // 判断系统平台，组装命令
+        if (stripos(PHP_OS, 'WIN') === 0) {
+            $linkCmd = "cmd /c mklink /D \"$target\" \"$dir\"";
+        } else {
+            $linkCmd = "ln -s \"$dir\" \"$target\"";
         }
-        $this->exec($link);
+
+        $this->echoInfo("创建链接命令：$linkCmd");
+
+        $result = $this->exec($linkCmd);
+        if ($result === false) {
+            $this->echoError("创建符号链接失败！");
+        } else {
+            $this->echoSuccess("符号链接创建成功：$target -> $dir");
+        }
+    }
+    private function deleteDir(string $dir): void
+    {
+        if (!is_dir($dir)) return;
+
+        $items = array_diff(scandir($dir), ['.', '..']);
+        foreach ($items as $item) {
+            $path = $dir . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path)) {
+                $this->deleteDir($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($dir);
     }
 
 
@@ -67,13 +99,8 @@ class RefreshCommand extends BaseCommand
             if (preg_match('/^submodule\.(.+)\.url\s+(.*)$/', $line, $matches)) {
                 $name = $matches[1];
                 $url  = $matches[2];
-
-                // 获取 path
-                $pathOutput = $this->exec("git config --file .git/config --get submodule." . escapeshellarg($name) . ".path");
-                $path = $pathOutput !== false ? trim($pathOutput) : $name;
-
                 // 写入 .gitmodules
-                $entry = "[submodule \"$name\"]\n    path = $path\n    url = $url\n";
+                $entry = "[submodule \"$name\"]\n    path = $name\n    url = $url\n";
                 file_put_contents('.gitmodules', $entry, FILE_APPEND);
             }
         }

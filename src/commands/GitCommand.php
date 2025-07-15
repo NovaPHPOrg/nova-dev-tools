@@ -12,7 +12,7 @@ class GitCommand
 
     function updateSubmodules(): void
     {
-        $this->baseCommand->echoInfo("Updating all submodules...");
+        $this->baseCommand->echoInfo("Updating all submodules");
 
         $gitmodules = parse_ini_file('.gitmodules', true, INI_SCANNER_TYPED);
 
@@ -20,18 +20,23 @@ class GitCommand
             if (!isset($config['path'])) {
                 continue;
             }
-
             $path = $config['path'];
+
             $this->baseCommand->echoInfo("Processing submodule at '$path'...");
+            $this->baseCommand->echoInfo("Working directory: " . getcwd());
+
+            $real = realpath($path);
+            $this->baseCommand->echoInfo("Resolved path: " . ($real ?: 'NOT RESOLVED'));
+
 
             // 检查子模块目录是否存在
-            if (!is_dir($path)) {
+            if (!is_dir($real)) {
                 $this->baseCommand->echoWarn("Submodule directory '$path' does not exist, skipping.");
                 continue;
             }
 
             // 获取当前分支
-            $currentBranch = $this->baseCommand->exec('git branch --show-current', $path);
+            $currentBranch = trim($this->baseCommand->exec('git branch --show-current', $real));
             if (!$currentBranch) {
                 $this->baseCommand->echoWarn("Could not determine current branch in '$path'.");
                 continue;
@@ -40,7 +45,7 @@ class GitCommand
             $this->baseCommand->echoInfo("Current branch in '$path': '$currentBranch'");
 
             // 执行 git pull 拉取远程更新
-            if (!$this->baseCommand->exec('git pull origin ' . $currentBranch, $path)) {
+            if (!$this->baseCommand->exec('git pull origin ' . $currentBranch, $real)) {
                 $this->baseCommand->echoWarn("Failed to pull from origin in '$path'.");
             } else {
                 $this->baseCommand->echoSuccess("Successfully pulled updates for submodule '$path' on branch '$currentBranch'.");
