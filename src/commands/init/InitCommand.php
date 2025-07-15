@@ -18,7 +18,7 @@ class InitCommand extends BaseCommand
         $this->nova = new NovaProject();
     }
 
-    public function init()
+    public function init(): void
     {
         $this->echoInfo("init project...");
         $this->nova->name = $this->getProjectName();
@@ -30,13 +30,13 @@ class InitCommand extends BaseCommand
         $this->nova->require = ["php"=>">=".SUPPORTED_PHP_VERSION ];
         // 创建项目目录
         // 初始化git
-        shell_exec("git init");
+        $this->exec("git init");
         // 创建nova.json
         $json = $this->nova->toComposerArray();
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE ));
         if($composer == "y"){
             file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
-            shell_exec("composer install");
+            $this->exec("composer install");
         }
         $this->initFramework();
 
@@ -45,8 +45,8 @@ class InitCommand extends BaseCommand
             $uiCommand->init();
         }
 
-        shell_exec("git add -A ");
-        shell_exec("git commit -m \":tada: project init\"");
+        $this->exec("git add -A ");
+        $this->exec("git commit -m \":tada: project init\"");
 
         $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
     }

@@ -14,11 +14,6 @@ class GitCommand
     {
         $this->baseCommand->echoInfo("Updating all submodules...");
 
-        if (!$this->baseCommand->exec("git submodule update --remote --force --recursive")) {
-            $this->baseCommand->echoError("Failed to update submodules.");
-            exit(1);
-        }
-
         $gitmodules = parse_ini_file('.gitmodules', true, INI_SCANNER_TYPED);
 
         foreach ($gitmodules as $section => $config) {
@@ -29,44 +24,26 @@ class GitCommand
             $path = $config['path'];
             $this->baseCommand->echoInfo("Processing submodule at '$path'...");
 
-            // Step 1: 获取 remote show origin 的输出（不使用 grep）
-            $command = 'git remote show origin';
-            $result = $this->baseCommand->exec($command, $path);
-
-
-            if (!$result) {
-                $this->baseCommand->echoWarn("Failed to read remote info in '$path'.");
-                continue;
-            }
-            $remoteInfo =  explode("\n", $result);
-
-            // Step 2: 手动在 PHP 中找出 HEAD 分支
-            $branch = null;
-            foreach ($remoteInfo as $line) {
-                if (preg_match('/HEAD .*?[:：]\s*(.+)$/iu', $line, $matches)) {
-                    $branch = trim($matches[1]);
-                    $this->baseCommand->echoInfo("Detected default branch: '$branch'");
-                    break;
-                }
-            }
-
-
-            if (!$branch) {
-                $this->baseCommand->echoWarn("Could not determine default branch for submodule '$path'.");
+            // 检查子模块目录是否存在
+            if (!is_dir($path)) {
+                $this->baseCommand->echoWarn("Submodule directory '$path' does not exist, skipping.");
                 continue;
             }
 
-            // Step 3: checkout 到远程分支
-            $checkoutCmd = 'cd ' . escapeshellarg($path)
-                . ' && git fetch origin'
-                . ' && git checkout -B ' . escapeshellarg($branch) . ' origin/' . escapeshellarg($branch);
+            // 获取当前分支
+            $currentBranch = $this->baseCommand->exec('git branch --show-current', $path);
+            if (!$currentBranch) {
+                $this->baseCommand->echoWarn("Could not determine current branch in '$path'.");
+                continue;
+            }
 
-            exec($checkoutCmd, $out, $code);
+            $this->baseCommand->echoInfo("Current branch in '$path': '$currentBranch'");
 
-            if ($code !== 0) {
-                $this->baseCommand->echoWarn("Failed to checkout '$branch' in '$path'.");
+            // 执行 git pull 拉取远程更新
+            if (!$this->baseCommand->exec('git pull origin ' . $currentBranch, $path)) {
+                $this->baseCommand->echoWarn("Failed to pull from origin in '$path'.");
             } else {
-                $this->baseCommand->echoSuccess("Submodule '$path' attached to branch '$branch'.");
+                $this->baseCommand->echoSuccess("Successfully pulled updates for submodule '$path' on branch '$currentBranch'.");
             }
         }
 
@@ -82,8 +59,7 @@ class GitCommand
         }
         // 拉取子模块
         $command = "git submodule add --force  $submoduleUrl $path";
-        exec($command, $output, $returnVar);
-        if ($returnVar !== 0) {
+        if (!$this->baseCommand->exec($command)) {
             $this->baseCommand->echoError("Failed to add submodule.");
             $this->removeSubmodule($path);
             exit(1);
@@ -92,8 +68,7 @@ class GitCommand
 
         //git submodule update --init --force --recursive
         // 初始化并更新子模块
-        exec("git submodule update --init --recursive", $output, $returnVar);
-        if ($returnVar !== 0) {
+        if (!$this->baseCommand->exec("git submodule update --init --recursive")) {
             $this->baseCommand->echoError("Failed to initialize and update submodule.");
             $this->removeSubmodule($path);
             exit(1);
@@ -117,8 +92,7 @@ class GitCommand
 
         // 从 .gitmodules 文件中移除子模块配置
         $command = "git submodule deinit -f $path";
-        exec($command, $output, $returnVar);
-        if ($returnVar !== 0) {
+        if (!$this->baseCommand->exec($command)) {
             $this->baseCommand->echoError("Failed to deinit submodule '$path'.");
            // exit(1);
         }
@@ -126,8 +100,7 @@ class GitCommand
 
         // 从 .git/config 文件中移除子模块配置
         $command = "git rm -f $path";
-        exec($command, $output, $returnVar);
-        if ($returnVar !== 0) {
+        if (!$this->baseCommand->exec($command)) {
             $this->baseCommand->echoError("Failed to remove submodule configuration for '$path'.");
            // exit(1);
         }

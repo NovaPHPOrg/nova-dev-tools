@@ -48,7 +48,7 @@ class UiCommand extends BaseCommand
                 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                      $link = "mklink /D static src/app/static";
                 }
-               exec($link);
+               $this->exec($link);
                break;
            case "list":
                $pluginManager->list();
