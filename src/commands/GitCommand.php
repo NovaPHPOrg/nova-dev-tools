@@ -64,21 +64,13 @@ class GitCommand
         }
         // 拉取子模块
         $command = "git submodule add --force  $submoduleUrl $path";
-        if (!$this->baseCommand->exec($command)) {
-            $this->baseCommand->echoError("Failed to add submodule.");
-            $this->removeSubmodule($path);
-            exit(1);
-        }
+        $this->baseCommand->exec($command);
         $this->baseCommand->echoSuccess("Submodule added at '$path'.");
 
         //git submodule update --init --force --recursive
         // 初始化并更新子模块
-       /* if (!$this->baseCommand->exec("git submodule update --init --recursive")) {
-            $this->baseCommand->echoError("Failed to initialize and update submodule.");
-            $this->removeSubmodule($path);
-            exit(1);
-        }
-        $this->baseCommand->echoSuccess("Submodule initialized and updated.");*/
+        $this->baseCommand->exec("git submodule update --init --recursive");
+        $this->baseCommand->echoSuccess("Submodule initialized and updated.");
     }
 
     function removeSubmodule(string $path): void
