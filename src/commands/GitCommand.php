@@ -73,12 +73,12 @@ class GitCommand
 
         //git submodule update --init --force --recursive
         // 初始化并更新子模块
-        if (!$this->baseCommand->exec("git submodule update --init --recursive")) {
+       /* if (!$this->baseCommand->exec("git submodule update --init --recursive")) {
             $this->baseCommand->echoError("Failed to initialize and update submodule.");
             $this->removeSubmodule($path);
             exit(1);
         }
-        $this->baseCommand->echoSuccess("Submodule initialized and updated.");
+        $this->baseCommand->echoSuccess("Submodule initialized and updated.");*/
     }
 
     function removeSubmodule(string $path): void
