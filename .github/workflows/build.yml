@@ -1,0 +1,51 @@
+name: Build Native Executables (All Platforms)
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        target: [linux-x64, linux-arm64, windows-x64, windows-arm64, macos-x64, macos-arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install Composer deps
+        run: composer install --no-dev || true
+
+      - name: Build PHAR
+        run: |
+          php build.php
+          ls -lh nova.phar
+
+      - name: Download static-php
+        run: |
+          curl -Lo static-php https://github.com/crazywhalecc/static-php-cli/releases/latest/download/static-php-linux-x64
+          chmod +x static-php
+
+      - name: Build native executable for ${{ matrix.target }}
+        run: |
+          mkdir -p dist
+          ./static-php pack nova.phar \
+            --target=${{ matrix.target }} \
+            --output=dist/nova-${{ matrix.target }}
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/nova-${{ matrix.target }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
