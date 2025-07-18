@@ -66,6 +66,7 @@ class RefreshCommand extends BaseCommand
 
     public function refreshModules(): void
     {
+
         $gitmodules = parse_ini_file('.gitmodules', true, INI_SCANNER_TYPED);
 
         foreach ($gitmodules as $section => $config) {
@@ -78,6 +79,7 @@ class RefreshCommand extends BaseCommand
 
             $this->exec('git update-index --really-refresh', $path);
         }
+        $this->exec('git update-index --really-refresh');
     }
 
     public function rebuildGitmodules(): void
