@@ -51,7 +51,7 @@ class GitCommand
                 $this->baseCommand->echoSuccess("Successfully pulled updates for submodule '$path' on branch '$currentBranch'.");
             }
         }
-
+        $this->baseCommand->exec("git submodule update --remote --merge");
         $this->baseCommand->echoInfo("All submodules processed.");
     }
 
@@ -70,6 +70,7 @@ class GitCommand
         //git submodule update --init --force --recursive
         // 初始化并更新子模块
         $this->baseCommand->exec("git submodule update --init --recursive");
+        $this->baseCommand->exec("git submodule update --remote --merge");
         $this->baseCommand->echoSuccess("Submodule initialized and updated.");
     }
 

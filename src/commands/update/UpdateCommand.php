@@ -26,5 +26,7 @@ class UpdateCommand extends BaseCommand
         } else {
             $this->echoSuccess("Successfully pulled updates for submodule './' on branch '$currentBranch'.");
         }
+
+        $this->exec("git submodule update --remote --merge");
     }
 }
