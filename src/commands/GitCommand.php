@@ -34,7 +34,7 @@ class GitCommand
                 $this->baseCommand->echoWarn("Submodule directory '$path' does not exist, skipping.");
                 continue;
             }
-
+$this->checkOutDefaultBranch($path);
             // 获取当前分支
             $currentBranch = trim($this->baseCommand->exec('git branch --show-current', $real));
             if (!$currentBranch) {
@@ -51,8 +51,22 @@ class GitCommand
                 $this->baseCommand->echoSuccess("Successfully pulled updates for submodule '$path' on branch '$currentBranch'.");
             }
         }
-        $this->baseCommand->exec("git submodule update --remote --merge");
+
         $this->baseCommand->echoInfo("All submodules processed.");
+    }
+
+
+    function checkOutDefaultBranch($path): void
+    {
+        $data = explode("\n", $this->baseCommand->exec("git branch",$path));
+        foreach ($data as $line) {
+            $line = trim(str_replace("*", "", $line));
+            if(empty($line) || str_contains($line, 'HEAD detached from')) {
+                continue;
+            }
+            $this->baseCommand->exec("git switch $line",$path);
+        }
+
     }
 
     function addSubmodule(string $submoduleUrl, string $path): void
@@ -70,7 +84,7 @@ class GitCommand
         //git submodule update --init --force --recursive
         // 初始化并更新子模块
         $this->baseCommand->exec("git submodule update --init --recursive");
-        $this->baseCommand->exec("git submodule update --remote --merge");
+        $this->checkOutDefaultBranch($path);
         $this->baseCommand->echoSuccess("Submodule initialized and updated.");
     }
 

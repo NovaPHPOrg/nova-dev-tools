@@ -3,6 +3,7 @@
 namespace nova\commands\refresh;
 
 use nova\commands\BaseCommand;
+use nova\commands\GitCommand;
 
 class RefreshCommand extends BaseCommand
 {
@@ -76,10 +77,11 @@ class RefreshCommand extends BaseCommand
 
             $path = $config['path'];
             $this->echoInfo("Refresh index: $path");
-
+            (new GitCommand($this))->checkOutDefaultBranch($path);
             $this->exec('git update-index --really-refresh', $path);
         }
         $this->exec('git update-index --really-refresh');
+
     }
 
     public function rebuildGitmodules(): void
