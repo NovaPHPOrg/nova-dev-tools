@@ -58,15 +58,58 @@ $this->checkOutDefaultBranch($path);
 
     function checkOutDefaultBranch($path): void
     {
-        $data = explode("\n", $this->baseCommand->exec("git branch",$path));
-        foreach ($data as $line) {
-            $line = trim(str_replace("*", "", $line));
-            if(empty($line) || str_contains($line, 'HEAD detached from')) {
+        $this->baseCommand->echoInfo("Checking out default branch in: $path");
+        
+        // 获取所有分支
+        $branchOutput = $this->baseCommand->exec("git branch", $path);
+        if ($branchOutput === false) {
+            $this->baseCommand->echoError("Failed to get branches in: $path");
+            return;
+        }
+        
+        $branches = explode("\n", trim($branchOutput));
+        $defaultBranch = null;
+        
+        foreach ($branches as $line) {
+            $line = trim($line);
+            if (empty($line)) {
                 continue;
             }
-            $this->baseCommand->exec("git switch $line",$path);
+            
+            // 跳过 detached HEAD 状态
+            if (str_contains($line, '(HEAD detached at') || str_contains($line, '(HEAD detached from')) {
+                continue;
+            }
+            
+            // 移除星号标记（当前分支）
+            $branchName = trim(str_replace('*', '', $line));
+            
+            // 优先选择 main 分支，然后是 master 分支
+            if ($branchName === 'main') {
+                $defaultBranch = 'main';
+                break;
+            } elseif ($branchName === 'master') {
+                $defaultBranch = 'master';
+            } elseif ($defaultBranch === null) {
+                // 如果没有找到 main 或 master，选择第一个非 detached 的分支
+                $defaultBranch = $branchName;
+            }
         }
-
+        
+        if ($defaultBranch === null) {
+            $this->baseCommand->echoError("No valid branch found in: $path");
+            return;
+        }
+        
+        $this->baseCommand->echoInfo("Switching to branch: $defaultBranch in: $path");
+        
+        // 切换到默认分支
+        $result = $this->baseCommand->exec("git switch $defaultBranch", $path);
+        if ($result === false) {
+            $this->baseCommand->echoError("Failed to switch to branch '$defaultBranch' in: $path");
+        } else {
+            $this->baseCommand->echoSuccess("Successfully switched to branch '$defaultBranch' in: $path");
+        }
     }
 
     function addSubmodule(string $submoduleUrl, string $path): void
