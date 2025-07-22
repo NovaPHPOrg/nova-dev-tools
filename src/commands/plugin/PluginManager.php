@@ -64,6 +64,8 @@ class PluginManager
             $this->baseCommand->echoError("Failed to fetch plugin list.");
             return;
         }
+
+
         $this->data = [];
         $executed = [
             "nova-server",
@@ -72,6 +74,11 @@ class PluginManager
             "nova-dev-tools"
         ];
         foreach ($list as $item){
+            if(!is_array($item)){
+                $this->baseCommand->echoWarn("fetch item: ". $item);
+                continue;
+            }
+
             if (in_array($item["name"], $executed)){
                 continue;
             }
