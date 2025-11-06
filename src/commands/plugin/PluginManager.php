@@ -34,14 +34,23 @@ class PluginManager
             'Accept: application/vnd.github+json',
         ];
 
-        curl_setopt_array($ch, [
+        $options = [
             CURLOPT_RETURNTRANSFER => true,   // 返回字符串而不是直接输出
             CURLOPT_TIMEOUT        => 10,     // 超时 10 秒
             CURLOPT_HTTPHEADER     => $headers,
             // ———— 若遇到证书问题可用以下两行临时跳过，生产环境应保留校验 ————
              CURLOPT_SSL_VERIFYPEER => false,
              CURLOPT_SSL_VERIFYHOST => 0,
-        ]);
+        ];
+
+        // 读取代理配置（从package.json）
+        $packageJson = json_decode(file_get_contents(getcwd() . '/package.json'), true);
+        $proxy = $packageJson['config']['http_proxy'] ?? '';
+        if (!empty($proxy)) {
+            $options[CURLOPT_PROXY] = $proxy;
+        }
+
+        curl_setopt_array($ch, $options);
 
         $response = curl_exec($ch);
         $errno    = curl_errno($ch);

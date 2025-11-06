@@ -31,15 +31,24 @@ class UiManager
         $ch = curl_init($url);
 
         // 常用 cURL 选项
-        curl_setopt_array($ch, [
+        $options = [
             CURLOPT_RETURNTRANSFER => true,          // 结果直接返回而非输出
             CURLOPT_USERAGENT      => 'PHP',         // UA 与原来保持一致
             CURLOPT_TIMEOUT        => 10,            // 可按需调整超时
             CURLOPT_FAILONERROR    => true,          // 4xx/5xx 时让 curl_exec 返回 false
-            // ↓↓↓ 下面两行就是“忽略证书”关键
+            // ↓↓↓ 下面两行就是"忽略证书"关键
             CURLOPT_SSL_VERIFYPEER => false,  // 不验证对端证书
             CURLOPT_SSL_VERIFYHOST => false,  // 不检查证书域名
-        ]);
+        ];
+
+        // 读取代理配置（从package.json）
+        $packageJson = json_decode(file_get_contents(getcwd() . '/package.json'), true);
+        $proxy = $packageJson['config']['http_proxy'] ?? '';
+        if (!empty($proxy)) {
+            $options[CURLOPT_PROXY] = $proxy;
+        }
+
+        curl_setopt_array($ch, $options);
 
         // 执行请求
         $raw = curl_exec($ch);
