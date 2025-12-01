@@ -24,7 +24,7 @@ class PluginManager
      */
     function listGitHubRepos(): ?array
     {
-        $url = "https://api.github.com/orgs/{$this->orgName}/repos";
+        $url = "https://api.github.com/orgs/{$this->orgName}/repos?per_page=1000";
 
         $ch = curl_init($url);
 
