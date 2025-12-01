@@ -2,7 +2,7 @@
 <project version="4">
   <component name="MessDetector">
     <phpmd_settings>
-      <phpmd_by_interpreter asDefaultInterpreter="true" interpreter_id="088dd297-fd28-45fa-8cbb-ae68025537aa" timeout="30000" />
+      <phpmd_by_interpreter asDefaultInterpreter="true" interpreter_id="dc96e144-c006-4e35-b752-44e2c74a4f22" timeout="30000" />
     </phpmd_settings>
   </component>
   <component name="MessDetectorOptionsConfiguration">
@@ -17,7 +17,7 @@
   </component>
   <component name="PhpCodeSniffer">
     <phpcs_settings>
-      <phpcs_by_interpreter asDefaultInterpreter="true" interpreter_id="088dd297-fd28-45fa-8cbb-ae68025537aa" timeout="30000" />
+      <phpcs_by_interpreter asDefaultInterpreter="true" interpreter_id="dc96e144-c006-4e35-b752-44e2c74a4f22" timeout="30000" />
     </phpcs_settings>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.3" />
