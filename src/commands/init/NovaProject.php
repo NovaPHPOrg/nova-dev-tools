@@ -41,7 +41,7 @@ class NovaProject
 
 
     public array $config = [
-        "vendor-dir" => "/src/vendor",
+        "vendor-dir" => "src/vendor",
     ];
     
 

@@ -114,8 +114,12 @@ $this->checkOutDefaultBranch($path);
 
     function addSubmodule(string $submoduleUrl, string $path): void
     {
+        // 规范化路径：去掉 ./ 前缀，计算绝对路径
+        $normalizedPath = ltrim($path, './');
+        $absolutePath = $this->baseCommand->workingDir . DIRECTORY_SEPARATOR . $normalizedPath;
+
         // 检查子模块是否已存在
-        if (is_dir($path)) {
+        if (is_dir($absolutePath)) {
             $this->baseCommand->echoError("Submodule directory '$path' already exists.");
             exit(1);
         }
@@ -132,10 +136,9 @@ $this->checkOutDefaultBranch($path);
         }
         $this->baseCommand->echoSuccess("Submodule added at '$path'.");
 
-        //git submodule update --init --force --recursive
-        // 初始化并更新子模块
-        $this->baseCommand->exec("git submodule update --init --recursive");
-        $this->checkOutDefaultBranch($path);
+        // 只更新当前子模块（指定路径），--force 强制检出 "Reactivating" 场景下的工作区
+        $this->baseCommand->exec("git submodule update --init --force -- $normalizedPath");
+        $this->checkOutDefaultBranch($absolutePath);
         $this->baseCommand->echoSuccess("Submodule initialized and updated.");
     }
 
