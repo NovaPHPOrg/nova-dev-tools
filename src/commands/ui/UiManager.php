@@ -16,7 +16,7 @@ class UiManager
         $this->command = new GitCommand($baseCommand);
     }
 
-    private string $orgName = "nova-ui";
+    private string $orgName = "NovaPHPOrgUI";
     /**
      * 通过 cURL 拉取 Gitea 组织仓库列表
      *
@@ -25,7 +25,7 @@ class UiManager
     function listGiteaRepos(): ?array
     {
         // 构造 URL
-        $url = "https://git.ankio.icu/api/v1/orgs/{$this->orgName}/repos";
+        $url = "https://github.com/orgs/{$this->orgName}/repos?per_page=1000";
 
         // 初始化 cURL 句柄
         $ch = curl_init($url);
