@@ -106,6 +106,11 @@ abstract class BaseCommand
     {
         $this->echoInfo("执行命令：$command");
 
+        if ($dir !== null && !is_dir($dir)) {
+            $this->echoError("工作目录不存在：$dir");
+            return false;
+        }
+
         $descriptorspec = [
             1 => ['pipe', 'w'], // stdout
             2 => ['pipe', 'w'], // stderr

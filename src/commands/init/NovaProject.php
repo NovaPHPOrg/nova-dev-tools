@@ -100,7 +100,8 @@ class NovaProject
      */
     protected function getComposerName(): string
     {
-        return  $this->name;
+        // Composer requires "vendor/package" format
+        return "nova/{$this->name}";
     }
     
     /**

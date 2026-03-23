@@ -119,9 +119,17 @@ $this->checkOutDefaultBranch($path);
             $this->baseCommand->echoError("Submodule directory '$path' already exists.");
             exit(1);
         }
+        // git submodule add --force 要求 .gitmodules 文件已存在于工作区
+        if (!file_exists('.gitmodules')) {
+            file_put_contents('.gitmodules', '');
+        }
         // 拉取子模块
         $command = "git submodule add --force  $submoduleUrl $path";
-        $this->baseCommand->exec($command);
+        $result = $this->baseCommand->exec($command);
+        if ($result === false) {
+            $this->baseCommand->echoError("Failed to add submodule at '$path'.");
+            return;
+        }
         $this->baseCommand->echoSuccess("Submodule added at '$path'.");
 
         //git submodule update --init --force --recursive
