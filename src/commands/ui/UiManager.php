@@ -25,7 +25,7 @@ class UiManager
     function listGiteaRepos(): ?array
     {
         // 构造 URL
-        $url = "https://github.com/orgs/{$this->orgName}/repos?per_page=1000";
+        $url = "https://api.github.com/orgs/{$this->orgName}/repos?per_page=1000";
 
         // 初始化 cURL 句柄
         $ch = curl_init($url);
@@ -111,7 +111,7 @@ class UiManager
         }
         $this->baseCommand->echoInfo("Installing component $pluginName...");
 
-        $this->command->addSubmodule("https://git.ankio.icu/nova-ui/nova-$pluginName","./src/app/static/components/{$this->getSaveName($pluginName)}");
+        $this->command->addSubmodule("https://github.com/{$this->orgName}/$pluginName","./src/app/static/components/{$this->getSaveName($pluginName)}");
         $this->baseCommand->echoInfo("Component $pluginName installed successfully.");
     }
 
