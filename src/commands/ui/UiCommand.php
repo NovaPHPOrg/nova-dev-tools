@@ -6,7 +6,6 @@ use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
 use nova\console\Output;
-use Phar;
 
 class UiCommand extends BaseCommand
 {
@@ -35,14 +34,15 @@ class UiCommand extends BaseCommand
 
        switch ($condition){
            case "init":
-               if (Phar::running()) {
-                   // 如果在 .phar 中运行，使用 phar:// 协议进行访问
-                   $sourceFile =  Phar::running() . DIRECTORY_SEPARATOR ;
-               } else {
-                   // 如果未打包成 .phar，则直接使用文件系统路径
-                   $sourceFile = '';
+               $templateDir = $this->resolveTemplateDir('init/ui');
+               if ($templateDir === null) {
+                   Output::error("UI 模板目录不存在：init/ui");
+                   return;
                }
-               $this->copyDir($sourceFile.$this->getDir("../../init/ui"),$this->workingDir);
+               if (!$this->copyDir($templateDir, $this->workingDir)) {
+                   Output::error("初始化 UI 模板失败。");
+                   return;
+               }
                $git = new GitCommand($this);
                $git->addSubmodule("https://github.com/NovaPHPOrgUI/framework","./src/app/static/framework");
                $link = "ln -s ./src/app/static ./static";

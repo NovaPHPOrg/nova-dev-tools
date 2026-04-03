@@ -7,7 +7,6 @@ use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
 use nova\commands\ui\UiCommand;
 use nova\console\Output;
-use Phar;
 use const nova\SUPPORTED_PHP_VERSION;
 
 class InitCommand extends BaseCommand
@@ -88,14 +87,17 @@ EOF;
     }
     private function initFramework(): void
     {
-        if (Phar::running()) {
-            // 如果在 .phar 中运行，使用 phar:// 协议进行访问
-            $sourceFile =  Phar::running() . DIRECTORY_SEPARATOR ;
-        } else {
-            // 如果未打包成 .phar，则直接使用文件系统路径
-            $sourceFile = '';
+        $templateDir = $this->resolveTemplateDir('init/project');
+        if ($templateDir === null) {
+            Output::error("项目模板目录不存在：init/project");
+            return;
         }
-        $this->copyDir($sourceFile.$this->getDir("../../init/project"),$this->workingDir);
+
+        if (!$this->copyDir($templateDir, $this->workingDir)) {
+            Output::error("初始化项目模板失败。");
+            return;
+        }
+
         $this->initReadme();
         $this->initFrameworkPHP();
     }

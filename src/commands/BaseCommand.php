@@ -4,6 +4,7 @@ namespace nova\commands;
 
 use nova\console\ConsoleColor;
 use nova\console\Output;
+use Phar;
 
 abstract class BaseCommand
 {
@@ -84,23 +85,67 @@ abstract class BaseCommand
     {
         return str_replace("/", DIRECTORY_SEPARATOR, $dir);
     }
-    protected function copyDir(string $string, string $string1): void
+    protected function copyDir(string $string, string $string1): bool
     {
+        if (!is_dir($string)) {
+            Output::error("目录不存在：$string");
+            return false;
+        }
+
         if (!is_dir($string1 )) {
             mkdir($string1 , 0777, true);
         }
         $dir = opendir($string);
+        if ($dir === false) {
+            Output::error("无法打开目录：$string");
+            return false;
+        }
         while ($file = readdir($dir)) {
             if (($file != '.') && ($file != '..')) {
                 if (is_dir($string . DIRECTORY_SEPARATOR . $file)) {
-                    $this->copyDir($string . DIRECTORY_SEPARATOR . $file, $string1 . DIRECTORY_SEPARATOR . $file);
+                    if (!$this->copyDir($string . DIRECTORY_SEPARATOR . $file, $string1 . DIRECTORY_SEPARATOR . $file)) {
+                        closedir($dir);
+                        return false;
+                    }
                 } else {
-
-                    copy($string . DIRECTORY_SEPARATOR . $file, $string1 . DIRECTORY_SEPARATOR . $file);
+                    if (!copy($string . DIRECTORY_SEPARATOR . $file, $string1 . DIRECTORY_SEPARATOR . $file)) {
+                        Output::error("复制文件失败：" . $string . DIRECTORY_SEPARATOR . $file);
+                        closedir($dir);
+                        return false;
+                    }
                 }
             }
         }
         closedir($dir);
+        return true;
+    }
+
+    protected function resolveTemplateDir(string $relative): ?string
+    {
+        $relative = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $relative), DIRECTORY_SEPARATOR);
+
+        // PHAR mode: prefer files next to the phar directory as project root, then fallback to embedded templates.
+        $runningPhar = Phar::running(false);
+        if ($runningPhar !== '') {
+            $pharDir = dirname($runningPhar);
+            $externalPath = $pharDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . $relative;
+            if (is_dir($externalPath)) {
+                return $externalPath;
+            }
+
+            $pharPath = 'phar://' . $runningPhar . '/' . str_replace(DIRECTORY_SEPARATOR, '/', $relative);
+            if (is_dir($pharPath)) {
+                return $pharPath;
+            }
+        }
+
+        // Source mode fallback: relative to repository src directory.
+        $sourcePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . $relative;
+        if (is_dir($sourcePath)) {
+            return $sourcePath;
+        }
+
+        return null;
     }
 
     function exec($command, $dir = null): bool|string
