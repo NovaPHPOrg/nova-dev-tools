@@ -89,12 +89,12 @@ EOF;
     {
         $templateDir = $this->resolveTemplateDir('init/project');
         if ($templateDir === null) {
-            Output::error("项目模板目录不存在：init/project");
+            Output::error("Project template directory not found: init/project");
             return;
         }
 
         if (!$this->copyDir($templateDir, $this->workingDir)) {
-            Output::error("初始化项目模板失败。");
+            Output::error("Failed to initialize project template.");
             return;
         }
 
@@ -110,7 +110,7 @@ EOF;
         $projectName = $this->prompt("Project name: ",$name);
         $regex = "/^[a-z0-9_\-]+$/";
         if (!preg_match($regex, $projectName)) {
-            $this->echoError("Project name can only contain lowercase letters, numbers, underscores, and dashes.");
+            Output::error("Project name can only contain lowercase letters, numbers, underscores, and dashes.");
             $projectName =  $this->getProjectName();
         }
         return $projectName;

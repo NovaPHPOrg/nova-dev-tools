@@ -4,6 +4,7 @@ namespace nova\commands\update;
 
 use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
+use nova\console\Output;
 
 class UpdateCommand extends BaseCommand
 {
@@ -15,16 +16,16 @@ class UpdateCommand extends BaseCommand
         // 获取当前分支
         $currentBranch = trim($this->exec('git branch --show-current'));
         if (!$currentBranch) {
-            $this->echoWarn("Could not determine current branch in './'.");
+            Output::warn("Could not determine current branch in './'.");
         }
 
-        $this->echoInfo("Current branch in './': '$currentBranch'");
+        Output::info("Current branch in './': '$currentBranch'");
 
         // 执行 git pull 拉取远程更新
         if (!$this->exec('git pull origin ' . $currentBranch)) {
-            $this->echoWarn("Failed to pull from origin in './'.");
+            Output::warn("Failed to pull from origin in './'.");
         } else {
-            $this->echoSuccess("Successfully pulled updates for submodule './' on branch '$currentBranch'.");
+            Output::success("Successfully pulled updates for submodule './' on branch '$currentBranch'.");
         }
 
     }

@@ -265,7 +265,7 @@ class Output
         $received = trim($line);
 
         if ($received === 'exit') {
-            self::warn("操作已取消。");
+            self::warn("Operation cancelled.");
             exit(0);
         }
 

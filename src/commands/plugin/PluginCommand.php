@@ -35,10 +35,10 @@ class PluginCommand extends BaseCommand
                break;
            case "add":
                if (count($this->options) < 1)
-                   $this->echoError("Please specify the plugin name.");
+                   Output::error("Please specify the plugin name.");
                 else{
                     foreach ($this->options as $option) {
-                        $this->echoInfo("Install Plugin $option");
+                        Output::info("Install Plugin $option");
                         $pluginManager->add($option);
                     }
                 }
@@ -47,10 +47,10 @@ class PluginCommand extends BaseCommand
                break;
            case "remove":
                 if (count($this->options) < 1)
-                     $this->echoError("Please specify the plugin name.");
+                     Output::error("Please specify the plugin name.");
                 else {
                     foreach ($this->options as $option) {
-                        $this->echoInfo("Uninstall Plugin $option");
+                        Output::info("Uninstall Plugin $option");
                         $pluginManager->remove($option);
                     }
                 }

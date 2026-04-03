@@ -4,6 +4,7 @@ namespace nova\commands\refresh;
 
 use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
+use nova\console\Output;
 
 class RefreshCommand extends BaseCommand
 {
@@ -25,10 +26,10 @@ class RefreshCommand extends BaseCommand
         if (file_exists($target) || is_link($target)) {
             if (is_link($target) || is_file($target)) {
                 unlink($target);
-                $this->echoInfo("已删除旧的文件或符号链接：$target");
+                Output::info("Removed old file or symbolic link: $target");
             } elseif (is_dir($target)) {
                 $this->deleteDir($target);
-                $this->echoInfo("已删除旧的目录：$target");
+                Output::info("Removed old directory: $target");
             }
         }
 
@@ -39,13 +40,13 @@ class RefreshCommand extends BaseCommand
             $linkCmd = "ln -s \"$dir\" \"$target\"";
         }
 
-        $this->echoInfo("创建链接命令：$linkCmd");
+        Output::info("Create link command: $linkCmd");
 
         $result = $this->exec($linkCmd);
         if ($result === false) {
-            $this->echoError("创建符号链接失败！");
+            Output::error("Failed to create symbolic link!");
         } else {
-            $this->echoSuccess("符号链接创建成功：$target -> $dir");
+            Output::success("Symbolic link created successfully: $target -> $dir");
         }
     }
     private function deleteDir(string $dir): void
@@ -76,7 +77,7 @@ class RefreshCommand extends BaseCommand
             }
 
             $path = $config['path'];
-            $this->echoInfo("Refresh index: $path");
+            Output::info("Refresh index: $path");
             (new GitCommand($this))->checkOutDefaultBranch($path);
             $this->exec('git update-index --really-refresh', $path);
         }
@@ -92,7 +93,7 @@ class RefreshCommand extends BaseCommand
         // 获取子模块 URL 信息
         $output = $this->exec('git config --file .git/config --get-regexp "^submodule\..*\.url$"');
         if ($output === false) {
-            $this->echoError("获取子模块URL失败！");
+            Output::error("Failed to get submodule URLs!");
             return;
         }
 
@@ -109,7 +110,7 @@ class RefreshCommand extends BaseCommand
             }
         }
 
-        $this->echoSuccess(".gitmodules 文件已成功重建！");
+        Output::success(".gitmodules file rebuilt successfully!");
     }
 
 }

@@ -48,14 +48,14 @@ class ServeCommand extends BaseCommand
     {
         $moduleDir = $this->getModuleDir();
         if ($moduleDir === null) {
-            $this->echoError("Serve module not found. Re-run `php nova.phar init` to embed it.");
+            Output::error("Serve module not found. Re-run `php nova.phar init` to embed it.");
             return;
         }
 
         $entryScript = $this->findEntryScript($moduleDir);
         if ($entryScript === null) {
-            $this->echoError("Serve entry script not found in module.");
-            $this->echoInfo("Expected one of: start.php, server.php, bin/start.php");
+            Output::error("Serve entry script not found in module.");
+            Output::info("Expected one of: start.php, server.php, bin/start.php");
             return;
         }
 

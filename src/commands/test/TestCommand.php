@@ -3,6 +3,7 @@
 namespace nova\commands\test;
 
 use nova\commands\BaseCommand;
+use nova\console\Output;
 
 class TestCommand extends BaseCommand
 {
@@ -11,12 +12,12 @@ class TestCommand extends BaseCommand
     {
 
 
-        $this->echoInfo("Running tests...");
+        Output::info("Running tests...");
         //查找tests文件夹里面所有以.test.php结尾的文件
         $dir = $this->workingDir . DIRECTORY_SEPARATOR . "tests" . DIRECTORY_SEPARATOR;
-        $this->echoInfo("Found any Tests in: " . $dir);
+        Output::info("Found any Tests in: " . $dir);
         if (!is_dir($dir)) {
-            $this->echoError("No tests found.");
+            Output::error("No tests found.");
             return;
         }
 
@@ -24,7 +25,7 @@ class TestCommand extends BaseCommand
         $tests = glob($dir. "*Test.php");
 
         if (count($tests) === 0) {
-            $this->echoError("No tests found.");
+            Output::error("No tests found.");
             return;
         }
 
@@ -37,17 +38,17 @@ class TestCommand extends BaseCommand
 
         foreach ($tests as $test) {
 
-            $this->echoInfo("Run test file: " . $test);
+            Output::info("Run test file: " . $test);
 
             $this->runTest($test);
         }
 
-        $this->echoSuccess("All tests complete.");
+        Output::success("All tests complete.");
     }
 
     private function runTest($test)
     {
-        $this->echoInfo("Running test: " . $test);
+        Output::info("Running test: " . $test);
        //调用php文件里面的test开头的方法
         require $test;
         $class = "tests\\" . basename($test, ".php");

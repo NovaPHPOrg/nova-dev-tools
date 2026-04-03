@@ -36,11 +36,11 @@ class UiCommand extends BaseCommand
            case "init":
                $templateDir = $this->resolveTemplateDir('init/ui');
                if ($templateDir === null) {
-                   Output::error("UI 模板目录不存在：init/ui");
+                   Output::error("UI template directory not found: init/ui");
                    return;
                }
                if (!$this->copyDir($templateDir, $this->workingDir)) {
-                   Output::error("初始化 UI 模板失败。");
+                   Output::error("Failed to initialize UI template.");
                    return;
                }
                $git = new GitCommand($this);
@@ -57,20 +57,20 @@ class UiCommand extends BaseCommand
                break;
            case "add":
                if (count($this->options) < 1)
-                   $this->echoError("Please specify the component name.");
+                   Output::error("Please specify the component name.");
                 else{
                     foreach ($this->options as $option) {
-                        $this->echoInfo("Install Component $option");
+                        Output::info("Install Component $option");
                         $pluginManager->add($option);
                     }
                 }
                break;
            case "remove":
                 if (count($this->options) < 1)
-                     $this->echoError("Please specify the component name.");
+                     Output::error("Please specify the component name.");
                 else {
                     foreach ($this->options as $option) {
-                        $this->echoInfo("Uninstall component $option");
+                        Output::info("Uninstall component $option");
                         $pluginManager->remove($option);
                     }
                 }
