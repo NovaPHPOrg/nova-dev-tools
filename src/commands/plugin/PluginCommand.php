@@ -3,16 +3,18 @@
 namespace nova\commands\plugin;
 
 use nova\commands\BaseCommand;
+use nova\console\Output;
 
 class PluginCommand extends BaseCommand
 {
     private function help()
     {
-        $this->echoInfo("Usage: nova plugin [command] [options]");
-        $this->echoInfo("Commands:");
-        $this->echoInfo("  list: List all available plugins.");
-        $this->echoInfo("  add [pluginName]: Add a plugin.");
-        $this->echoInfo("  remove [pluginName]: Remove a plugin.");
+        Output::usage("nova plugin <command> [options]");
+        Output::section("Commands");
+        Output::commandRow("list",             "List all available plugins");
+        Output::commandRow("add <name>",   "Install a plugin");
+        Output::commandRow("remove <name>","Uninstall a plugin");
+        Output::writeln();
     }
 
     public function init(): void

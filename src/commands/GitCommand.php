@@ -120,16 +120,17 @@ $this->checkOutDefaultBranch($path);
 
         // 检查子模块是否已存在
         if (is_dir($absolutePath)) {
-            $this->baseCommand->echoError("Submodule directory '$path' already exists.");
-            exit(1);
+            $this->baseCommand->echoWarn("Submodule directory '$path' already exists, skip add.");
+            return;
         }
         // git submodule add --force 要求 .gitmodules 文件已存在于工作区
-        if (!file_exists('.gitmodules')) {
-            file_put_contents('.gitmodules', '');
+        $gitmodulesPath = $this->baseCommand->workingDir . DIRECTORY_SEPARATOR . '.gitmodules';
+        if (!file_exists($gitmodulesPath)) {
+            file_put_contents($gitmodulesPath, '');
         }
         // 拉取子模块
         $command = "git submodule add --force  $submoduleUrl $path";
-        $result = $this->baseCommand->exec($command);
+        $result = $this->baseCommand->exec($command, $this->baseCommand->workingDir);
         if ($result === false) {
             $this->baseCommand->echoError("Failed to add submodule at '$path'.");
             return;
@@ -137,7 +138,7 @@ $this->checkOutDefaultBranch($path);
         $this->baseCommand->echoSuccess("Submodule added at '$path'.");
 
         // 只更新当前子模块（指定路径），--force 强制检出 "Reactivating" 场景下的工作区
-        $this->baseCommand->exec("git submodule update --init --force -- $normalizedPath");
+        $this->baseCommand->exec("git submodule update --init --force -- $normalizedPath", $this->baseCommand->workingDir);
         $this->checkOutDefaultBranch($absolutePath);
         $this->baseCommand->echoSuccess("Submodule initialized and updated.");
     }
@@ -158,7 +159,7 @@ $this->checkOutDefaultBranch($path);
 
         // 从 .gitmodules 文件中移除子模块配置
         $command = "git submodule deinit -f $path";
-        if (!$this->baseCommand->exec($command)) {
+        if (!$this->baseCommand->exec($command, $this->baseCommand->workingDir)) {
             $this->baseCommand->echoError("Failed to deinit submodule '$path'.");
            // exit(1);
         }
@@ -166,7 +167,7 @@ $this->checkOutDefaultBranch($path);
 
         // 从 .git/config 文件中移除子模块配置
         $command = "git rm -f $path";
-        if (!$this->baseCommand->exec($command)) {
+        if (!$this->baseCommand->exec($command, $this->baseCommand->workingDir)) {
             $this->baseCommand->echoError("Failed to remove submodule configuration for '$path'.");
            // exit(1);
         }

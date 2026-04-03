@@ -23,6 +23,11 @@ php nova.phar init
 php nova.phar build
 php nova.phar test [TestName...]
 php nova.phar fix
+php nova.phar serve start
+php nova.phar serve stop
+php nova.phar serve restart
+php nova.phar serve reload
+php nova.phar serve status
 php nova.phar update
 php nova.phar refresh
 php nova.phar plugin list
@@ -224,7 +229,27 @@ php nova.phar update
 php nova.phar refresh
 ```
 
-## 7. 常见错误速修
+## 7. 本地调试服务（serve）
+
+`serve` 在执行 `php nova.phar init` 时自动嵌入（`nova-workerman`）。
+
+### 7.1 启停与状态
+
+```bash
+php nova.phar serve start
+php nova.phar serve stop
+php nova.phar serve restart
+php nova.phar serve reload
+php nova.phar serve status
+```
+
+可追加额外参数（会透传给 `nova-workerman` 入口脚本）：
+
+```bash
+php nova.phar serve start -d
+```
+
+## 8. 常见错误速修
 
 ### 7.1 Composer 包名格式错误
 
@@ -263,7 +288,7 @@ php -i | grep disable_functions
 
 确认：在项目根目录执行命令，且 PHP 未禁用 `proc_open`。
 
-## 8. 给 AI 的直接任务模板
+## 9. 给 AI 的直接任务模板
 
 ### 模板 1：检索并安装模块
 

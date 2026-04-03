@@ -6,6 +6,7 @@ use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
 use nova\commands\ui\UiCommand;
+use nova\console\Output;
 use Phar;
 use const nova\SUPPORTED_PHP_VERSION;
 
@@ -20,35 +21,44 @@ class InitCommand extends BaseCommand
 
     public function init(): void
     {
-        $this->echoInfo("init project...");
-        $this->nova->name = $this->getProjectName();
-        $this->nova->description = $this->prompt("请输入项目描述: ",$this->nova->description);
-        $this->nova->author = $this->prompt("请输入作者: ", $this->nova->author);
-        $this->nova->license = $this->prompt("请输入许可证: ",$this->nova->license);
-        $novaUI = $this->prompt("使用NovaUI框架(y/n): ","n");
-        $composer = $this->prompt("使用Composer(y/n): ","n");
-        $this->nova->require = ["php"=>">=".SUPPORTED_PHP_VERSION ];
-        // 创建项目目录
-        // 初始化git
+        Output::section("Create Nova Project");
+        $this->nova->name        = $this->getProjectName();
+        $this->nova->description = $this->prompt("Project description", $this->nova->description);
+        $this->nova->author      = $this->prompt("Author", $this->nova->author);
+        $this->nova->license     = $this->prompt("License", $this->nova->license);
+        $novaUI   = $this->prompt("Use NovaUI framework? (y/n)", "n");
+        $composer = $this->prompt("Use Composer? (y/n)", "n");
+        $this->nova->require = ["php" => ">=" . SUPPORTED_PHP_VERSION];
+
+        Output::section("Setting up project");
         $this->exec("git init");
-        // 创建nova.json
+
         $json = $this->nova->toComposerArray();
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE ));
-        if($composer == "y"){
-            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json", json_encode($json,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
+        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json",
+            json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        if ($composer === "y") {
+            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json",
+                json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
             $this->exec("composer install");
         }
+
         $this->initFramework();
 
-        if($novaUI == "y"){
-            $uiCommand = new UiCommand($this->workingDir,["init"]);
+        if ($novaUI === "y") {
+            $uiCommand = new UiCommand($this->workingDir, ["init"]);
             $uiCommand->init();
         }
 
-        $this->exec("git add -A ");
+        $this->initServeModule();
+
+        Output::section("Committing");
+        $this->exec("git add -A");
         $this->exec("git commit -m \":tada: project init\"");
 
-        $this->echoSuccess("项目 {$this->nova->name} 初始化成功。");
+        Output::writeln();
+        Output::success("Project {$this->nova->name} initialized successfully 🎉");
+        Output::writeln();
     }
 
     private function initReadme(): void
@@ -70,6 +80,12 @@ EOF;
         $git = new GitCommand($this);
         $git->addSubmodule("https://github.com/NovaPHPOrg/nova-framework","./src/nova/framework");
     }
+
+    private function initServeModule(): void
+    {
+        $git = new GitCommand($this);
+        $git->addSubmodule("https://github.com/NovaPHPOrg/nova-workerman","./src/nova/workerman");
+    }
     private function initFramework(): void
     {
         if (Phar::running()) {
@@ -89,10 +105,10 @@ EOF;
     {
         //获取当前文件夹名称
         $name  = basename(getcwd());
-        $projectName = $this->prompt("项目名称: ",$name);
+        $projectName = $this->prompt("Project name: ",$name);
         $regex = "/^[a-z0-9_\-]+$/";
         if (!preg_match($regex, $projectName)) {
-            $this->echoError("项目名只能包含小写字母、数字、下划线和破折号。");
+            $this->echoError("Project name can only contain lowercase letters, numbers, underscores, and dashes.");
             $projectName =  $this->getProjectName();
         }
         return $projectName;

@@ -1,13 +1,17 @@
 <?php
 namespace nova;
 use nova\commands\init\InitCommand;
+use nova\console\Output;
+
 $config = require "config.php";
 define("nova\VERSION", $config['version']);
 define("nova\SUPPORTED_PHP_VERSION", $config['php_version']);
+
 // check php version
 if (version_compare(phpversion(), SUPPORTED_PHP_VERSION, '<')) {
     exit("This script requires PHP ".SUPPORTED_PHP_VERSION." or later.\n");
 }
+
 // check if running from command line
 if (!isset($argv)){
     exit("This script is meant to be run from the command line.\n");
@@ -15,25 +19,50 @@ if (!isset($argv)){
 
 include "autoload.php";
 
-function help()
+function help(): void
 {
-    echo "Usage: nova <command> [options]\n";
-    echo "Available commands:\n";
-    echo "  help    - this message\n";
-    echo "  version - devtools version\n";
-    echo "  init    - create an new nova project\n";
-    echo "  build   - build nova project as an phar package or an zip archive\n";
-    echo "  test <name>   - test nova project\n";
-    echo "  fix     - fix code\n";
-    echo "  update  - update all submodules\n";
-    echo "  plugin  <list> - list plugins of nova php\n";
-    echo "  plugin  <add> <plugin-name> - install a plugin\n";
-    echo "  plugin  <remove> <plugin-name> - uninstall a plugin\n";
-    echo "  ui  <init>    - create an new nova-admin ui project\n";
-    echo "  ui  <list> - list components of nova php\n";
-    echo "  ui  <add> <component-name> - install a component\n";
-    echo "  ui  <remove> <component-name> - uninstall a component\n";
-    echo "  refresh  - force update git index\n";
+    Output::banner("Nova Dev Tools", "v" . \nova\VERSION);
+
+    Output::writeln();
+    Output::usage("nova <command> [options]");
+
+    Output::section("General");
+    Output::commandRow("help",    "Display this help message");
+    Output::commandRow("version", "Show devtools version");
+
+    Output::section("Project");
+    Output::commandRow("init",    "Create a new Nova project");
+    Output::commandRow("build",   "Build project as .phar package or .zip archive");
+    Output::commandRow("test",    "Run project tests");
+    Output::subCommandRow("test <name>", "Run a specific test case by name");
+    Output::commandRow("fix",     "Auto-fix code style (php-cs-fixer)");
+    Output::commandRow("refresh", "Force-update git index (reset cached files)");
+    Output::commandRow("update",  "Update all git submodules");
+
+    Output::section("Server");
+    Output::commandRow("serve",   "Manage the local development server");
+    Output::subCommandRow("serve start",   "Start the server");
+    Output::subCommandRow("serve stop",    "Stop the server");
+    Output::subCommandRow("serve restart", "Restart the server");
+    Output::subCommandRow("serve reload",  "Reload the server");
+    Output::subCommandRow("serve status",  "Show server status");
+
+    Output::section("Plugins");
+    Output::commandRow("plugin",  "Manage Nova PHP plugins");
+    Output::subCommandRow("plugin list",              "List all available plugins");
+    Output::subCommandRow("plugin add <name>",    "Install a plugin");
+    Output::subCommandRow("plugin remove <name>", "Uninstall a plugin");
+
+    Output::section("UI");
+    Output::commandRow("ui",      "Manage Nova Admin UI components");
+    Output::subCommandRow("ui init",              "Scaffold a new Nova Admin UI project");
+    Output::subCommandRow("ui list",              "List all available components");
+    Output::subCommandRow("ui add <name>",    "Install a component");
+    Output::subCommandRow("ui remove <name>", "Uninstall a component");
+
+    Output::writeln();
+    Output::muted("Tip: type 'exit' at any prompt to cancel the current operation.");
+    Output::writeln();
 }
 
 
@@ -46,11 +75,16 @@ if(count($argv) < 2){
 $command = strtolower(str_replace("-", "", $argv[1]));
 $workingDir = getcwd();
 $options = array_slice($argv, 2);
-echo "Working directory: $workingDir\n";
+
+Output::workingDir($workingDir);
+
 switch ($command){
     case "version":
     case "v":
-        echo "Nova " . VERSION . "\n";
+        Output::writeln(
+            Output::apply(['bold', 'light_cyan'], "  ⚡ Nova Dev Tools ") .
+            Output::apply('white', "v" . VERSION)
+        );
         break;
     default:
         $cls = "nova\\commands\\" . $command . "\\" . ucfirst($command)."Command";
@@ -58,8 +92,12 @@ switch ($command){
             $obj = new $cls($workingDir, $options);
             $obj->init();
         }else{
+            Output::error("Unknown command: $command");
+            Output::writeln();
             help();
             break;
         }
 }
+
+
 

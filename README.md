@@ -7,6 +7,7 @@ Nova Dev Tools is a PHP CLI toolkit for bootstrapping and maintaining Nova proje
 - Initialize a new Nova project (`init`)
 - Manage framework plugins (`plugin`)
 - Manage Nova UI components (`ui`)
+- Manage local development server module (`serve`)
 - Run project tests (`test`)
 - Build release archives (`build`)
 - Update and refresh git submodules (`update`, `refresh`)
@@ -41,9 +42,22 @@ php nova.phar init
 php nova.phar build
 php nova.phar test
 php nova.phar fix
+php nova.phar serve start
 php nova.phar update
 php nova.phar refresh
 ```
+
+### Serve Commands
+
+```bash
+php nova.phar serve start
+php nova.phar serve stop
+php nova.phar serve restart
+php nova.phar serve reload
+php nova.phar serve status
+```
+
+`serve` is embedded during `php nova.phar init`.
 
 ### Plugin Commands
 

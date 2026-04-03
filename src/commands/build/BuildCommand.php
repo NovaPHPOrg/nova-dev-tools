@@ -3,6 +3,7 @@
 namespace nova\commands\build;
 
 use nova\commands\BaseCommand;
+use nova\console\Output;
 
 class BuildCommand extends BaseCommand
 {
@@ -22,31 +23,34 @@ class BuildCommand extends BaseCommand
 
     public function init()
     {
-
-        $this->echoInfo("build project...");
+        Output::section("Build Project");
         $this->removePath($this->zip);
         mkdir($this->output, 0777, true);
         $this->copyDir($this->workingDir . DIRECTORY_SEPARATOR . "src", $this->output);
-        $version = $this->prompt("请输入版本号({$this->nova['version']}): ", $this->nova['version']);
-        $this->echoInfo("版本号: " . $version);
-        //修改config.php的版本号，并将config.php重命名为config.php.example
-        $config = include $this->output . DIRECTORY_SEPARATOR . "config.php";
+
+        $version = $this->prompt("Version", $this->nova['version']);
+        Output::info("Building version: $version");
+
+        $config            = include $this->output . DIRECTORY_SEPARATOR . "config.php";
         $config["version"] = $version;
-        $config["debug"] = false;
-        $config = "<?php\nreturn " . var_export($config, true) . ";";
-        file_put_contents($this->output . DIRECTORY_SEPARATOR  . "example.config.php", $config);
+        $config["debug"]   = false;
+        $config            = "<?php\nreturn " . var_export($config, true) . ";";
+        file_put_contents($this->output . DIRECTORY_SEPARATOR . "example.config.php", $config);
         unlink($this->output . DIRECTORY_SEPARATOR . "config.php");
-       // 清空src/runtime目录
+
         $this->removePath($this->output . DIRECTORY_SEPARATOR . "runtime");
         mkdir($this->output . DIRECTORY_SEPARATOR . "runtime", 0777, true);
-        $this->echoInfo("打包中...");
+
+        Output::step("Packing archive…");
         $zip = new \ZipArchive();
         $zip->open($this->zip . DIRECTORY_SEPARATOR . $this->nova['name'] . "-" . $version . ".zip", \ZipArchive::CREATE);
         $this->addFileToZip($this->zip, $zip);
         $zip->close();
-        $this->echoSuccess("项目打包成功。");
         $this->removePath($this->output);
 
+        Output::writeln();
+        Output::success("Project packed → dist/{$this->nova['name']}-{$version}.zip");
+        Output::writeln();
     }
 
 

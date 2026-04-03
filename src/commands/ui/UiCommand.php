@@ -5,18 +5,20 @@ namespace nova\commands\ui;
 use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
+use nova\console\Output;
 use Phar;
 
 class UiCommand extends BaseCommand
 {
     private function help()
     {
-        $this->echoInfo("Usage: nova ui [command] [options]");
-        $this->echoInfo("Commands:");
-        $this->echoInfo("  init: Initialize the UI.");
-        $this->echoInfo("  list: List all available ui components.");
-        $this->echoInfo("  add [componentName]: Add a component.");
-        $this->echoInfo("  remove [componentName]: Remove a component.");
+        Output::usage("nova ui <command> [options]");
+        Output::section("Commands");
+        Output::commandRow("init",             "Scaffold a new Nova Admin UI project");
+        Output::commandRow("list",             "List all available components");
+        Output::commandRow("add <name>",   "Install a component");
+        Output::commandRow("remove <name>","Uninstall a component");
+        Output::writeln();
     }
 
     public function init(): void

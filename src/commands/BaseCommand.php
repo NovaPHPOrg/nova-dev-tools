@@ -3,6 +3,7 @@
 namespace nova\commands;
 
 use nova\console\ConsoleColor;
+use nova\console\Output;
 
 abstract class BaseCommand
 {
@@ -104,10 +105,10 @@ abstract class BaseCommand
 
     function exec($command, $dir = null): bool|string
     {
-        $this->echoInfo("执行命令：$command");
+        Output::step("$ $command");
 
         if ($dir !== null && !is_dir($dir)) {
-            $this->echoError("工作目录不存在：$dir");
+            Output::error("工作目录不存在：$dir");
             return false;
         }
 
@@ -119,7 +120,7 @@ abstract class BaseCommand
         $process = proc_open($command, $descriptorspec, $pipes, $dir);
 
         if (!is_resource($process)) {
-            $this->echoError("无法启动进程");
+            Output::error("无法启动进程");
             return false;
         }
 
@@ -132,19 +133,23 @@ abstract class BaseCommand
         $exitCode = proc_close($process);
 
         if ($stdout !== '') {
-            $this->echoInfo("STDOUT:\n" . trim($stdout));
+            foreach (explode("\n", trim($stdout)) as $line) {
+                Output::muted($line);
+            }
         }
 
         if ($stderr !== '') {
-            $this->echoInfo("STDERR:\n" . trim($stderr)); // 不一定是失败，改成 info 级别
+            foreach (explode("\n", trim($stderr)) as $line) {
+                Output::muted($line);
+            }
         }
 
         if ($exitCode !== 0) {
-            $this->echoError("命令执行失败，退出码：$exitCode");
+            Output::error("命令执行失败，退出码：$exitCode");
             return false;
         }
 
-        $this->echoSuccess("命令执行成功");
+        Output::success("命令执行成功");
         return $stdout;
     }
 
