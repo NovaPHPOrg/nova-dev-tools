@@ -2,28 +2,47 @@
 
 namespace nova\commands;
 
+use FilesystemIterator;
 use nova\console\Output;
 use Phar;
 
+/**
+ * 基础命令类
+ * 为所有命令提供公共功能，包括用户交互、文件操作和命令执行
+ */
 abstract class BaseCommand
 {
+    /**
+     * 初始化命令
+     * 每个具体命令必须实现此方法
+     */
     abstract public function init();
+
+    /** @var string 命令执行的工作目录 */
     public string $workingDir;
+
+    /** @var array 命令选项 */
     protected array $options;
 
-    public function __construct($workingDir, $options)
+    /**
+     * 构造函数
+     *
+     * @param string $workingDir 工作目录
+     * @param array $options 命令选项
+     */
+    public function __construct(string $workingDir, $options)
     {
         $this->workingDir = $workingDir;
         $this->options = $options;
     }
 
     /**
-     * Prompt user for input with optional default value.
-     * Delegates to Output::prompt for consistent output handling.
+     * 提示用户输入，支持默认值
+     * 将用户交互委托给 Output::prompt 以保证一致的输出处理
      *
-     * @param string $promptMessage The prompt text
-     * @param string $default       Default value if user just presses enter
-     * @return string               User input or default value
+     * @param string $promptMessage 提示信息
+     * @param string $default 用户未输入时的默认值
+     * @return string 用户输入或默认值
      */
     protected function prompt(string $promptMessage, string $default = ""): string
     {
@@ -31,31 +50,40 @@ abstract class BaseCommand
     }
 
     /**
-     * Recursively remove a directory or file path.
-     * Supports both Windows and Unix-like systems.
+     * 递归删除目录或文件
      *
-     * @param string $path The path to remove
-     * @return bool True on success, false on failure
+     * @param string $path 要删除的路径
+     * @return bool 成功返回 true，失败返回 false
      */
     function removePath(string $path): bool
     {
-        if (PHP_OS_FAMILY === 'Windows') {
-            // Windows remove directory and file commands
-            if (is_dir($path)) {
-                $command = "rmdir /S /Q \"$path\"";
-            } else {
-                $command = "del /F /Q \"$path\"";
-            }
-        } else {
-            // UNIX-like system remove directory and file commands
-            $command = "rm -rf \"$path\"";
+        if (!file_exists($path)) {
+            return true;
         }
-        return $this->exec($command)!==false;
+
+        if (is_file($path)) {
+            return @unlink($path);
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $fileinfo) {
+            $fileinfo->isDir() ? @rmdir($fileinfo->getPathname()) : @unlink($fileinfo->getPathname());
+        }
+
+        return @rmdir($path);
     }
-    protected function getDir($dir): string
-    {
-        return str_replace("/", DIRECTORY_SEPARATOR, $dir);
-    }
+
+    /**
+     * 递归复制目录及其所有内容
+     *
+     * @param string $sourceDir 源目录路径
+     * @param string $targetDir 目标目录路径
+     * @return bool 成功返回 true，失败返回 false
+     */
     protected function copyDir(string $sourceDir, string $targetDir): bool
     {
         if (!is_dir($sourceDir)) {
@@ -63,69 +91,53 @@ abstract class BaseCommand
             return false;
         }
 
-        if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
-            Output::error("Failed to create directory: $targetDir");
-            return false;
+        @mkdir($targetDir, 0777, true);
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($sourceDir, FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $path => $file) {
+            $relPath = substr($path, strlen($sourceDir) + 1);
+            $target = $targetDir . DIRECTORY_SEPARATOR . $relPath;
+            $file->isDir() ? @mkdir($target, 0777, true) : @copy($path, $target);
         }
 
-        $dir = opendir($sourceDir);
-        if ($dir === false) {
-            Output::error("Unable to open directory: $sourceDir");
-            return false;
-        }
-
-        while ($file = readdir($dir)) {
-            if (($file != '.') && ($file != '..')) {
-                $sourcePath = $sourceDir . DIRECTORY_SEPARATOR . $file;
-                $targetPath = $targetDir . DIRECTORY_SEPARATOR . $file;
-
-                if (is_dir($sourcePath)) {
-                    if (!$this->copyDir($sourcePath, $targetPath)) {
-                        closedir($dir);
-                        return false;
-                    }
-                } else {
-                    if (!copy($sourcePath, $targetPath)) {
-                        Output::error("Failed to copy file: $sourcePath");
-                        closedir($dir);
-                        return false;
-                    }
-                }
-            }
-        }
-        closedir($dir);
         return true;
     }
 
+    /**
+     * 解析模板目录路径
+     * 支持 PHAR 模式和源代码模式
+     * - PHAR 模式：优先使用 PHAR 外部的文件，然后回退到嵌入的模板
+     * - 源代码模式：相对于 src 目录
+     *
+     * @param string $relative 相对路径
+     * @return string|null 解析后的完整路径，如果不存在返回 null
+     */
     protected function resolveTemplateDir(string $relative): ?string
     {
         $relative = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $relative), DIRECTORY_SEPARATOR);
 
-        // PHAR mode: prefer files next to the phar directory as project root, then fallback to embedded templates.
         $runningPhar = Phar::running(false);
-        if ($runningPhar !== '') {
-            $pharDir = dirname($runningPhar);
-            $externalPath = $pharDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . $relative;
-            if (is_dir($externalPath)) {
-                return $externalPath;
-            }
+        $basePath = $runningPhar !== ''
+            ? 'phar://' . $runningPhar
+            : dirname(__DIR__);
 
-            $pharPath = 'phar://' . $runningPhar . '/' . str_replace(DIRECTORY_SEPARATOR, '/', $relative);
-            if (is_dir($pharPath)) {
-                return $pharPath;
-            }
-        }
-
-        // Source mode fallback: relative to repository src directory.
-        $sourcePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . $relative;
-        if (is_dir($sourcePath)) {
-            return $sourcePath;
-        }
-
-        return null;
+        $path = $basePath . DIRECTORY_SEPARATOR . $relative;
+        return is_dir($path) ? $path : null;
     }
 
-    function exec($command, $dir = null): bool|string
+    /**
+     * 执行系统命令
+     * 捕获 stdout 和 stderr，并通过 Output 进行格式化输出
+     *
+     * @param string $command 要执行的命令
+     * @param string|null $dir 命令执行的工作目录，null 表示使用默认目录
+     * @return bool|string 成功返回标准输出内容，失败返回 false
+     */
+    function exec(string $command, string $dir = null): bool|string
     {
         Output::step("$ $command");
 
@@ -174,6 +186,5 @@ abstract class BaseCommand
         Output::success("Command executed successfully");
         return $stdout;
     }
-
 
 }
