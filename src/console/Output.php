@@ -71,7 +71,7 @@ class Output
         );
         self::writeln(
             self::apply('light_cyan', '│') .
-            self::apply('dark_gray', $l2p) .
+            self::apply('light_gray', $l2p) .
             self::apply('light_cyan', '│')
         );
         self::writeln(self::apply('light_cyan', '╰' . $border . '╯'));
@@ -88,7 +88,7 @@ class Output
     {
         self::writeln();
         self::writeln(self::apply(['bold', 'light_yellow'], " $title "));
-        self::writeln(self::apply('dark_gray', ' ' . str_repeat('─', 48)));
+        self::writeln(self::apply('light_gray', ' ' . str_repeat('─', 48)));
     }
 
     // ─── 分隔线 ──────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ class Output
      */
     public static function divider(int $width = 48): void
     {
-        self::writeln(self::apply('dark_gray', ' ' . str_repeat('─', $width)));
+        self::writeln(self::apply('light_gray', ' ' . str_repeat('─', $width)));
     }
 
     // ─── 用法说明 ───────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ class Output
     {
         self::writeln(
             '  ' .
-            self::apply('dark_gray', 'Usage:') .
+            self::apply('light_gray', 'Usage:') .
             ' ' .
             self::apply(['bold', 'white'], $text)
         );
@@ -148,7 +148,7 @@ class Output
     {
         echo '    ' .
             self::apply('light_cyan', str_pad($cmd, $pad)) .
-            self::apply('dark_gray', $desc) .
+            self::apply('light_gray', $desc) .
             "\n";
     }
 
@@ -202,7 +202,7 @@ class Output
     /** 输出紫色步骤消息（前缀 ▶），常用于命令执行阶段提示。 */
     public static function step(string $msg, bool $newLine = true): void
     {
-        echo self::apply('magenta', ' ▶ ') .
+        echo self::apply('light_magenta', ' ▶ ') .
              self::apply('white', $msg) .
              ($newLine ? "\n" : '');
     }
@@ -210,7 +210,7 @@ class Output
     /** 输出暗灰色辅助信息，常用于命令输出的原始内容。 */
     public static function muted(string $msg, bool $newLine = true): void
     {
-        echo self::apply('dark_gray', "   $msg") .
+        echo self::apply('light_gray', "   $msg") .
              ($newLine ? "\n" : '');
     }
 
@@ -250,13 +250,13 @@ class Output
     public static function prompt(string $msg, string $default = ''): string
     {
         $defaultText = $default !== ''
-            ? self::apply('dark_gray', " ($default)")
+            ? self::apply('light_gray', " ($default)")
             : '';
 
         echo self::apply('light_cyan', ' ? ') .
              self::apply('white', $msg) .
              $defaultText .
-             self::apply('dark_gray', ' › ');
+             self::apply('light_gray', ' › ');
 
         $handle   = fopen('php://stdin', 'r');
         $line     = fgets($handle);
@@ -282,8 +282,8 @@ class Output
     public static function workingDir(string $dir): void
     {
         self::writeln(
-            self::apply('dark_gray', ' 📁 ') .
-            self::apply('dark_gray', 'cwd › ') .
+            self::apply('light_gray', ' 📁 ') .
+            self::apply('light_gray', 'cwd › ') .
             self::apply('light_cyan', $dir)
         );
     }
