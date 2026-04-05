@@ -130,8 +130,7 @@ abstract class BaseCommand
     }
 
     /**
-     * 执行系统命令，实时流式读取 stdout / stderr。
-     * 使用 fread + proc_get_status 轮询，兼容 Windows（stream_select 在 Windows 管道上不可用）。
+     * 执行系统命令，并在命令结束后统一输出 stdout / stderr。
      *
      * @param string      $command     要执行的命令
      * @param string|null $dir         工作目录，null 表示使用当前目录
@@ -141,9 +140,9 @@ abstract class BaseCommand
     function exec(string $command, string $dir = null, bool $ignoreError = false): bool|string
     {
         if ($ignoreError) {
-            Output::muted("~ $command");
+            Output::commandLine('~', $command, true);
         } else {
-            Output::step("$ $command");
+            Output::commandLine('$', $command);
         }
 
         if ($dir !== null && !is_dir($dir)) {
@@ -163,95 +162,30 @@ abstract class BaseCommand
             return $ignoreError ? '' : false;
         }
 
-        // 非阻塞模式，允许实时轮询读取
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-
-        $stdout   = '';
-        $stderr   = '';
-        $outBuf   = ''; // stdout 未完整行缓冲
-        $errBuf   = ''; // stderr 未完整行缓冲
-        $exitCode = -1;
-
-        // 将缓冲区中完整的行（以 \n 结尾）冲刷到滚动日志
-        $flushLines = function (string &$buf, bool $show): void {
-            while (($nl = strpos($buf, "\n")) !== false) {
-                $line = rtrim(substr($buf, 0, $nl));
-                $buf  = substr($buf, $nl + 1);
-                if ($line !== '' && $show) {
-                    Output::liveLog($line);
-                }
-            }
-        };
-
-        Output::liveLogBegin(5);
-
-        do {
-            $chunk1 = fread($pipes[1], 8192);
-            if ($chunk1 !== false && $chunk1 !== '') {
-                $stdout .= $chunk1;
-                $outBuf .= $chunk1;
-            }
-
-            $chunk2 = fread($pipes[2], 8192);
-            if ($chunk2 !== false && $chunk2 !== '') {
-                $stderr .= $chunk2;
-                $errBuf .= $chunk2;
-            }
-
-            $flushLines($outBuf, true);
-            $flushLines($errBuf, !$ignoreError);
-
-            $status = proc_get_status($process);
-
-            if (!$status['running']) {
-                // 进程已退出，捕获退出码（部分系统只有第一次调用有效）
-                $exitCode = (int)$status['exitcode'];
-
-                // 切回阻塞模式，彻底清空 OS 管道缓冲区
-                stream_set_blocking($pipes[1], true);
-                stream_set_blocking($pipes[2], true);
-
-                $r1 = stream_get_contents($pipes[1]);
-                if ($r1 !== false && $r1 !== '') { $stdout .= $r1; $outBuf .= $r1; }
-
-                $r2 = stream_get_contents($pipes[2]);
-                if ($r2 !== false && $r2 !== '') { $stderr .= $r2; $errBuf .= $r2; }
-
-                $flushLines($outBuf, true);
-                $flushLines($errBuf, !$ignoreError);
-
-                // 刷新末尾没有换行符的残余内容
-                if ($outBuf !== '') {
-                    $line = rtrim($outBuf);
-                    if ($line !== '') Output::liveLog($line);
-                }
-                if ($errBuf !== '' && !$ignoreError) {
-                    $line = rtrim($errBuf);
-                    if ($line !== '') Output::liveLog($line);
-                }
-
-                break;
-            }
-
-            // 无新数据时短暂休眠，避免 CPU 空转
-            // 此处使用轮询而非 stream_select，以兼容 Windows（pipe 不支持 stream_select）
-            if (($chunk1 === false || $chunk1 === '') && ($chunk2 === false || $chunk2 === '')) {
-                usleep(10000); // 10ms
-            }
-        } while (true);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
 
         fclose($pipes[1]);
         fclose($pipes[2]);
 
-        $closeCode = proc_close($process);
-        // proc_close 在 Windows 上有时返回 -1（exitcode 已被 proc_get_status 消费）
-        // 优先使用 proc_close 的值，否则回退到 proc_get_status 捕获的值
-        if ($closeCode >= 0) {
-            $exitCode = $closeCode;
+        $exitCode = proc_close($process);
+
+        $stdout = $stdout === false ? '' : $stdout;
+        $stderr = $stderr === false ? '' : $stderr;
+
+        foreach (preg_split('/\r\n|\n|\r/', rtrim($stdout)) as $line) {
+            if ($line !== '') {
+                Output::commandStdout($line);
+            }
         }
 
-        Output::liveLogEnd();
+        if (!$ignoreError) {
+            foreach (preg_split('/\r\n|\n|\r/', rtrim($stderr)) as $line) {
+                if ($line !== '') {
+                    Output::commandStderr($line);
+                }
+            }
+        }
 
         if ($exitCode !== 0) {
             if (!$ignoreError) {

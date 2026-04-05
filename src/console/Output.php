@@ -202,15 +202,42 @@ class Output
     /** 输出紫色步骤消息（前缀 ▶），常用于命令执行阶段提示。 */
     public static function step(string $msg, bool $newLine = true): void
     {
-        echo self::apply('light_magenta', ' ▶ ') .
-             self::apply('white', $msg) .
+        echo self::apply('light_gray', ' ▶ ') .
+             self::apply(['dark', 'light_gray'], $msg) .
+             ($newLine ? "\n" : '');
+    }
+
+    /** 输出命令执行行，提示符与命令正文使用不同颜色。 */
+    public static function commandLine(string $symbol, string $command, bool $subtle = false): void
+    {
+        $symbolStyle = $subtle ? 'dark_gray' : 'light_cyan';
+        $commandStyle = $subtle ? ['dark', 'light_gray'] : 'light_gray';
+
+        echo ' ' .
+             self::apply($symbolStyle, $symbol) .
+             ' ' .
+             self::apply($commandStyle, $command) .
+             "\n";
+    }
+
+    /** 输出命令标准输出内容（低亮度中性色）。 */
+    public static function commandStdout(string $msg, bool $newLine = true): void
+    {
+        echo self::apply(['dark', 'light_gray'], "   $msg") .
+             ($newLine ? "\n" : '');
+    }
+
+    /** 输出命令错误输出内容（红色警示）。 */
+    public static function commandStderr(string $msg, bool $newLine = true): void
+    {
+        echo self::apply('light_red', "   $msg") .
              ($newLine ? "\n" : '');
     }
 
     /** 输出暗灰色辅助信息，常用于命令输出的原始内容。 */
     public static function muted(string $msg, bool $newLine = true): void
     {
-        echo self::apply('light_gray', "   $msg") .
+        echo self::apply(['dark', 'light_gray'], "   $msg") .
              ($newLine ? "\n" : '');
     }
 
