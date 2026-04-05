@@ -3,7 +3,6 @@
 namespace nova\commands\init;
 
 use nova\commands\BaseCommand;
-use nova\commands\GitCommand;
 use nova\commands\plugin\PluginManager;
 use nova\commands\ui\UiCommand;
 use nova\console\Output;
@@ -12,6 +11,7 @@ use const nova\SUPPORTED_PHP_VERSION;
 class InitCommand extends BaseCommand
 {
     private NovaProject $nova;
+
     public function __construct($workingDir, $options)
     {
         parent::__construct($workingDir, $options);
@@ -21,11 +21,11 @@ class InitCommand extends BaseCommand
     public function init(): void
     {
         Output::section("Create Nova Project");
-        $this->nova->name        = $this->getProjectName();
+        $this->nova->name = $this->getProjectName();
         $this->nova->description = $this->prompt("Project description", $this->nova->description);
-        $this->nova->author      = $this->prompt("Author", $this->nova->author);
-        $this->nova->license     = $this->prompt("License", $this->nova->license);
-        $novaUI   = $this->prompt("Use NovaUI framework? (y/n)", "n");
+        $this->nova->author = $this->prompt("Author", $this->nova->author);
+        $this->nova->license = $this->prompt("License", $this->nova->license);
+        $novaUI = $this->prompt("Use NovaUI framework? (y/n)", "n");
         $composer = $this->prompt("Use Composer? (y/n)", "n");
         $this->nova->require = ["php" => ">=" . SUPPORTED_PHP_VERSION];
 
@@ -33,12 +33,16 @@ class InitCommand extends BaseCommand
         $this->exec("git init");
 
         $json = $this->nova->toComposerArray();
-        file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "package.json",
-            json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        file_put_contents(
+            $this->workingDir . DIRECTORY_SEPARATOR . "package.json",
+            json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
 
         if ($composer === "y") {
-            file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "composer.json",
-                json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            file_put_contents(
+                $this->workingDir . DIRECTORY_SEPARATOR . "composer.json",
+                json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+            );
             $this->exec("composer install");
         }
 
@@ -62,7 +66,6 @@ class InitCommand extends BaseCommand
 
     private function initReadme(): void
     {
-        // 创建README.md
         $readme = <<<EOF
 # {$this->nova->name}
 {$this->nova->description}
@@ -73,18 +76,18 @@ EOF;
         file_put_contents($this->workingDir . DIRECTORY_SEPARATOR . "README.md", $readme);
     }
 
-
     private function initFrameworkPHP(): void
     {
-        $git = new GitCommand($this);
-        $git->addSubmodule("https://github.com/NovaPHPOrg/nova-framework","./src/nova/framework");
+        $pluginManager = new PluginManager($this);
+        $pluginManager->installFrameworkModule();
     }
 
     private function initServeModule(): void
     {
-        $git = new GitCommand($this);
-        $git->addSubmodule("https://github.com/NovaPHPOrg/nova-workerman","./src/nova/workerman");
+        $pluginManager = new PluginManager($this);
+        $pluginManager->installServeModule();
     }
+
     private function initFramework(): void
     {
         $templateDir = $this->resolveTemplateDir('init/project');
@@ -102,19 +105,16 @@ EOF;
         $this->initFrameworkPHP();
     }
 
-
     private function getProjectName(): string
     {
-        //获取当前文件夹名称
-        $name  = basename(getcwd());
-        $projectName = $this->prompt("Project name: ",$name);
+        $name = basename($this->workingDir);
+        $projectName = $this->prompt("Project name: ", $name);
         $regex = "/^[a-z0-9_\-]+$/";
         if (!preg_match($regex, $projectName)) {
             Output::error("Project name can only contain lowercase letters, numbers, underscores, and dashes.");
-            $projectName =  $this->getProjectName();
+            $projectName = $this->getProjectName();
         }
         return $projectName;
     }
-
-
 }
+

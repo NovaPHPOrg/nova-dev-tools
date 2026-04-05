@@ -2,78 +2,49 @@
 
 namespace nova\commands\plugin;
 
-use nova\commands\BaseCommand;
 use nova\commands\ConfigUtils;
-use nova\commands\GitCommand;
+use nova\commands\RemoteManager;
+use nova\console\Output;
 
-class PluginManager
+/**
+ * 插件管理器：负责插件列表、安装、卸载与插件配置联动。
+ */
+class PluginManager extends RemoteManager
 {
-    private BaseCommand $baseCommand;
-    private GitCommand $command;
-    public function __construct($baseCommand)
+    /** 插件来源组织。 */
+    protected function getOrgName(): string
     {
-        $this->baseCommand = $baseCommand;
-        $this->command = new GitCommand($baseCommand);
+        return "NovaPHPOrg";
     }
 
-    private string $orgName = "NovaPHPOrg";
     /**
-     * 列出某个 GitHub 组织的公开仓库
-     *
-     * @return array|null  成功返回数组，失败返回 null
+     * 将插件名转换为远程仓库名。
      */
-    function listGitHubRepos(): ?array
+    protected function buildPluginRepoName(string $pluginName): string
     {
-        $url = "https://api.github.com/orgs/{$this->orgName}/repos?per_page=1000";
-
-        $ch = curl_init($url);
-
-        $headers = [
-            'User-Agent: PHP',
-            // 'Authorization: Bearer YOUR_GITHUB_TOKEN', // ← 如需鉴权取消注释
-            'Accept: application/vnd.github+json',
-        ];
-
-        $options = [
-            CURLOPT_RETURNTRANSFER => true,   // 返回字符串而不是直接输出
-            CURLOPT_TIMEOUT        => 10,     // 超时 10 秒
-            CURLOPT_HTTPHEADER     => $headers,
-            // ———— 若遇到证书问题可用以下两行临时跳过，生产环境应保留校验 ————
-             CURLOPT_SSL_VERIFYPEER => false,
-             CURLOPT_SSL_VERIFYHOST => 0,
-        ];
-
-        // 读取代理配置（从package.json）
-        $packageJson = json_decode(file_get_contents(getcwd() . '/package.json'), true);
-        $proxy = $packageJson['config']['http_proxy'] ?? '';
-        if (!empty($proxy)) {
-            $options[CURLOPT_PROXY] = $proxy;
-        }
-
-        curl_setopt_array($ch, $options);
-
-        $response = curl_exec($ch);
-        $errno    = curl_errno($ch);
-
-        curl_close($ch);
-
-        if ($errno !== 0 || $response === false) {
-            // 可在此记录日志：curl_strerror($errno)
-            return null;
-        }
-
-        return json_decode($response, true);
+        return "nova-$pluginName";
     }
 
-    private array $data = [];
-    function list()
+    /** 初始化核心 framework 子模块。 */
+    public function installFrameworkModule(): void
     {
-        $list = $this->listGitHubRepos();
+        $this->installRepoSubmodule($this->buildPluginRepoName('framework'), './src/nova/framework');
+    }
+
+    /** 初始化核心 workerman 子模块。 */
+    public function installServeModule(): void
+    {
+        $this->installRepoSubmodule($this->buildPluginRepoName('workerman'), './src/nova/workerman');
+    }
+
+    /** 拉取并打印可安装插件列表。 */
+    function list(): void
+    {
+        $list = $this->listOrgRepos();
         if ($list === null) {
-            $this->baseCommand->echoError("Failed to fetch plugin list.");
+            Output::error("Failed to fetch plugin list.");
             return;
         }
-
 
         $this->data = [];
         $executed = [
@@ -82,88 +53,83 @@ class PluginManager
             "nova-framework",
             "nova-dev-tools"
         ];
-        foreach ($list as $item){
-            if(!is_array($item)){
-                $this->baseCommand->echoWarn("fetch item: ". $item);
+
+        foreach ($list as $item) {
+            if (!is_array($item)) {
+                Output::warn("fetch item: " . (string) $item);
                 continue;
             }
 
-            if (in_array($item["name"], $executed)){
+            if (in_array($item["name"], $executed, true)) {
                 continue;
             }
+
             $name = str_replace("nova-", "", $item["name"]);
-            $this->baseCommand->echoInfo($name);
+            Output::info($name);
             $this->data[] = $name;
         }
     }
 
-    function getSaveName($pluginName){
-        if(str_contains($pluginName,"-")){
-            $result = explode("-", $pluginName, 2);
-            return $result[0];
-        }
-        return $pluginName;
-    }
-
-    function add($pluginName): void
+    /**
+     * 安装插件并处理 package.php 中的 config/require 依赖。
+     */
+    function add(string $pluginName): void
     {
-        if (empty($data)){
+        if (empty($this->data)) {
             $this->list();
         }
-        if (!in_array($pluginName, $this->data)){
-            $this->baseCommand->echoError("Plugin $pluginName not found.");
+
+        if (!in_array($pluginName, $this->data, true)) {
+            Output::error("Plugin $pluginName not found.");
             return;
         }
-        $this->baseCommand->echoInfo("Installing plugin $pluginName...");
 
-        $this->command->addSubmodule("https://github.com/NovaPHPOrg/nova-$pluginName","./src/nova/plugin/{$this->getSaveName($pluginName)}");
-        $this->baseCommand->echoInfo("Plugin $pluginName installed successfully.");
-        // 判断是否有package.php
-        $file = getcwd()."/src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
-        if (file_exists($file)){
+        Output::info("Installing plugin $pluginName...");
+        $this->installRepoSubmodule(
+            $this->buildPluginRepoName($pluginName),
+            "./src/nova/plugin/{$this->getSaveName($pluginName)}"
+        );
+        Output::info("Plugin $pluginName installed successfully.");
+
+        $file = getcwd() . "/src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
+        if (file_exists($file)) {
             $config = include $file;
-            // return [
-            //    "config"=>[
-            //        "framework.start"=>[
-            //            "nova\\plugin\\task\\Task",
-            //        ]
-            //    ]
-            //];
-            if (isset($config['config'])){
+            if (isset($config['config'])) {
                 $conf = new ConfigUtils();
                 $conf->merge($config['config']);
                 unset($conf);
             }
 
-            if (isset($config["require"])){
-                foreach ($config["require"] as $item){
+            if (isset($config["require"])) {
+                foreach ($config["require"] as $item) {
                     $this->add($item);
                 }
             }
         }
     }
 
-    function remove($pluginName): void
+    /**
+     * 卸载插件并回滚 package.php 中声明的联动配置。
+     */
+    function remove(string $pluginName): void
     {
-        $file = getcwd()."/src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
+        $file = getcwd() . "/src/nova/plugin/{$this->getSaveName($pluginName)}/package.php";
         if (file_exists($file)) {
             $config = include $file;
-            if (isset($config['config'])){
+            if (isset($config['config'])) {
                 $conf = new ConfigUtils();
                 $conf->remove_keys($config['config']);
                 unset($conf);
             }
-            if (isset($config["require"])){
-                foreach ($config["require"] as $item){
+            if (isset($config["require"])) {
+                foreach ($config["require"] as $item) {
                     $this->remove($item);
                 }
             }
-
         }
-        $this->baseCommand->echoInfo("Uninstalling plugin $pluginName...");
-        $this->command->removeSubmodule("./src/nova/plugin/$pluginName");
-        $this->baseCommand->echoInfo("Plugin $pluginName uninstalled successfully.");
+
+        Output::info("Uninstalling plugin $pluginName...");
+        $this->command->removeSubmodule("./src/nova/plugin/{$this->getSaveName($pluginName)}");
+        Output::info("Plugin $pluginName uninstalled successfully.");
     }
-
-
 }

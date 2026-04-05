@@ -30,7 +30,7 @@ abstract class BaseCommand
      * @param string $workingDir 工作目录
      * @param array $options 命令选项
      */
-    public function __construct(string $workingDir, $options)
+    public function __construct(string $workingDir, array $options)
     {
         $this->workingDir = $workingDir;
         $this->options = $options;

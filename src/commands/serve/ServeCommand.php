@@ -1,3 +1,5 @@
+            $this->echoError("Serve entry script not found in module.");
+            $this->echoInfo("Expected one of: start.php, server.php, bin/start.php");
 <?php
 
 namespace nova\commands\serve;
@@ -46,16 +48,16 @@ class ServeCommand extends BaseCommand
 
     private function runServeAction(string $action): void
     {
-        $moduleDir = $this->getModuleDir();
-        if ($moduleDir === null) {
             Output::error("Serve module not found. Re-run `php nova.phar init` to embed it.");
+        if ($moduleDir === null) {
+            $this->echoError("Serve module not found. Re-run `php nova.phar init` to embed it.");
             return;
         }
 
-        $entryScript = $this->findEntryScript($moduleDir);
-        if ($entryScript === null) {
             Output::error("Serve entry script not found in module.");
             Output::info("Expected one of: start.php, server.php, bin/start.php");
+            $this->echoError("Serve entry script not found in module.");
+            $this->echoInfo("Expected one of: start.php, server.php, bin/start.php");
             return;
         }
 
