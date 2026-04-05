@@ -194,9 +194,6 @@ abstract class BaseCommand
             return $ignoreError ? $stdout : false;
         }
 
-        if (!$ignoreError) {
-            Output::success("Command executed successfully");
-        }
         return $stdout;
     }
 

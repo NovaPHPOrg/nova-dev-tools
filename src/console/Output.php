@@ -171,7 +171,7 @@ class Output
     public static function info(string $msg, bool $newLine = true): void
     {
         echo self::apply('light_blue',  ' ℹ ') .
-             self::apply('white', $msg) .
+             self::apply('light_blue', $msg) .
              ($newLine ? "\n" : '');
     }
 
@@ -179,7 +179,7 @@ class Output
     public static function success(string $msg, bool $newLine = true): void
     {
         echo self::apply('light_green', ' ✓ ') .
-             self::apply('white', $msg) .
+             self::apply('light_green', $msg) .
              ($newLine ? "\n" : '');
     }
 
@@ -187,7 +187,7 @@ class Output
     public static function warn(string $msg, bool $newLine = true): void
     {
         echo self::apply('light_yellow', ' ⚠ ') .
-             self::apply('white', $msg) .
+             self::apply('light_yellow', $msg) .
              ($newLine ? "\n" : '');
     }
 
@@ -195,7 +195,7 @@ class Output
     public static function error(string $msg, bool $newLine = true): void
     {
         echo self::apply('light_red', ' ✗ ') .
-             self::apply('white', $msg) .
+             self::apply('light_red', $msg) .
              ($newLine ? "\n" : '');
     }
 
@@ -211,7 +211,7 @@ class Output
     public static function commandLine(string $symbol, string $command, bool $subtle = false): void
     {
         $symbolStyle = $subtle ? 'dark_gray' : 'light_cyan';
-        $commandStyle = $subtle ? ['dark', 'light_gray'] : 'light_gray';
+        $commandStyle = $subtle ? 'dark_gray' : ['dark', 'light_gray'];
 
         echo ' ' .
              self::apply($symbolStyle, $symbol) .
@@ -223,14 +223,14 @@ class Output
     /** 输出命令标准输出内容（低亮度中性色）。 */
     public static function commandStdout(string $msg, bool $newLine = true): void
     {
-        echo self::apply(['dark', 'light_gray'], "   $msg") .
+        echo self::apply('dark_gray', "   $msg") .
              ($newLine ? "\n" : '');
     }
 
-    /** 输出命令错误输出内容（红色警示）。 */
+    /** 输出命令错误输出内容（柔和警示色）。 */
     public static function commandStderr(string $msg, bool $newLine = true): void
     {
-        echo self::apply('light_red', "   $msg") .
+        echo self::apply(['dark', 'light_yellow'], "   $msg") .
              ($newLine ? "\n" : '');
     }
 
