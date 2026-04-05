@@ -18,7 +18,6 @@ class RefreshCommand extends BaseCommand
     {
         $this->cleanupMissingSubmodules();
         $this->rebuildGitmodules();
-        $this->migrateLegacyUiRemotes();
         $this->refreshModules();
         // $this->relink();
     }
@@ -61,24 +60,41 @@ class RefreshCommand extends BaseCommand
         }
     }
     /**
+     * 从 .git/config 中读取所有子模块配置，返回 [name => url] 映射。
+     *
+     * @return array<string, string> 键为子模块名（同时作为相对路径），值为远程 URL
+     */
+    private function getSubmoduleConfigs(): array
+    {
+        $output = $this->exec('git config --file .git/config --get-regexp "^submodule\\..*\\.url$"');
+        if ($output === false || trim($output) === '') {
+            return [];
+        }
+
+        $configs = [];
+        foreach (explode("\n", trim($output)) as $line) {
+            if (preg_match('/^submodule\.(.+)\.url\s+(.*)$/', $line, $matches)) {
+                $configs[$matches[1]] = $matches[2];
+            }
+        }
+        return $configs;
+    }
+
+    /**
      * 刷新已配置子模块索引，并尝试切换到默认分支。
      *
      * @return void
      */
     public function refreshModules(): void
     {
-        $gitmodules = parse_ini_file('.gitmodules', true, INI_SCANNER_TYPED);
-        if ($gitmodules === false || $gitmodules === []) {
-            Output::warn("No submodule entries found in .gitmodules, skipping refresh.");
+        $configs = $this->getSubmoduleConfigs();
+        if (empty($configs)) {
+            Output::warn("No submodule entries found in .git/config, skipping refresh.");
             return;
         }
 
-        foreach ($gitmodules as $section => $config) {
-            if (!isset($config['path'])) {
-                continue;
-            }
-
-            $path = $config['path'];
+        foreach ($configs as $name => $url) {
+            $path = $this->workingDir . DIRECTORY_SEPARATOR . $name;
             if (!is_dir($path)) {
                 Output::warn("Submodule path missing, skip refresh: $path");
                 continue;
@@ -89,7 +105,6 @@ class RefreshCommand extends BaseCommand
             $this->exec('git update-index --really-refresh', $path);
         }
         $this->exec('git update-index --really-refresh');
-
     }
 
     /**
@@ -99,39 +114,35 @@ class RefreshCommand extends BaseCommand
      */
     public function rebuildGitmodules(): void
     {
-        $submodules = $this->getSubmoduleConfigs();
+        $gitmodules = $this->workingDir . DIRECTORY_SEPARATOR . '.gitmodules';
+        $configs = $this->getSubmoduleConfigs();
 
-        // 清空 .gitmodules 文件
-        file_put_contents('.gitmodules', '');
-
-        foreach ($submodules as $name => $config) {
-            if (!isset($config['path'], $config['url'])) {
-                continue;
-            }
-            $path = $config['path'];
-            $url = $config['url'];
-            $entry = "[submodule \"$name\"]\n    path = $path\n    url = $url\n";
-            file_put_contents('.gitmodules', $entry, FILE_APPEND);
+        $content = '';
+        foreach ($configs as $name => $url) {
+            $content .= "[submodule \"$name\"]\n    path = $name\n    url = $url\n";
         }
+        file_put_contents($gitmodules, $content);
 
         Output::success(".gitmodules file rebuilt successfully!");
     }
 
     /**
      * 检测已不存在的子模块目录，并清理对应残留配置。
+     * 直接从 .git/config 读取权威的 path 配置。
      *
      * @return void
      */
     private function cleanupMissingSubmodules(): void
     {
-        $submodules = $this->getSubmoduleConfigs();
+        $configs = $this->getSubmoduleConfigs();
+        if (empty($configs)) {
+            return;
+        }
 
-        foreach ($submodules as $name => $config) {
-            if (!isset($config['path'])) {
-                continue;
-            }
+        foreach ($configs as $name => $url) {
+            Output::info("Checking submodule: $name -> $url");
 
-            $path = $config['path'];
+            $path = $this->workingDir . DIRECTORY_SEPARATOR . $name;
             if (is_dir($path)) {
                 continue;
             }
@@ -164,187 +175,6 @@ class RefreshCommand extends BaseCommand
         if ($name !== $path) {
             $this->removePath('.git/modules/' . $path);
         }
-    }
-
-    /**
-     * 将旧域名 UI 子模块远程迁移到 GitHub，并尝试同步远程分支。
-     *
-     * @return void
-     */
-    private function migrateLegacyUiRemotes(): void
-    {
-        $submodules = $this->getSubmoduleConfigs();
-
-        foreach ($submodules as $name => $config) {
-            if (!isset($config['path'], $config['url'])) {
-                continue;
-            }
-
-            $path = $config['path'];
-            $oldUrl = $config['url'];
-            $newUrl = $this->mapLegacyUiUrl($oldUrl);
-
-            if ($newUrl === null || $newUrl === $oldUrl) {
-                continue;
-            }
-
-            Output::info("Migrating submodule remote: $oldUrl -> $newUrl");
-            $urlArg = escapeshellarg($newUrl);
-            $configKeyArg = escapeshellarg("submodule.$name.url");
-            $pathArg = escapeshellarg($path);
-
-            $this->exec("git config --file .git/config $configKeyArg $urlArg");
-            $this->exec("git config --file .gitmodules $configKeyArg $urlArg");
-            $this->execSafe("git submodule sync -- $pathArg");
-
-            if (!is_dir($path)) {
-                Output::warn("Submodule folder missing after URL migration, skip sync: $path");
-                continue;
-            }
-
-            $this->syncSubmoduleRemote($path, $newUrl);
-        }
-    }
-
-    /**
-     * 将旧 UI 域名的子模块地址映射到 GitHub 组织地址。
-     * 匹配失败返回 null，表示不是迁移目标。
-     *
-     * @param string $url 原始子模块 URL
-     * @return string|null 匹配成功返回新 URL，否则返回 null
-     */
-    private function mapLegacyUiUrl(string $url): ?string
-    {
-        $trimmedUrl = trim($url);
-        $pattern = '~^(?:https?://|ssh://)?(?:git@)?git\.ankio\.icu[:/]nova-ui/(nova-[^/\s]+?)(?:\.git)?/?$~i';
-
-        if (!preg_match($pattern, $trimmedUrl, $matches)) {
-            return null;
-        }
-
-        // 规则：nova-xxx -> xxx，对应 NovaPHPOrgUI/xxx 仓库。
-        $repoName = $matches[1];
-        if (str_starts_with($repoName, 'nova-')) {
-            $repoName = substr($repoName, 5);
-        }
-
-        if ($repoName === '') {
-            return null;
-        }
-
-        return "https://github.com/NovaPHPOrgUI/$repoName.git";
-    }
-
-    /**
-     * 远程同步策略：远程分支存在则 pull，不存在则首次 push 并建立 upstream。
-     *
-     * @param string $path 子模块路径
-     * @param string $remoteUrl 迁移后的远程 URL
-     * @return void
-     */
-    private function syncSubmoduleRemote(string $path, string $remoteUrl): void
-    {
-        $urlArg = escapeshellarg($remoteUrl);
-        if ($this->exec("git remote set-url origin $urlArg", $path) === false) {
-            $this->exec("git remote add origin $urlArg", $path);
-        }
-
-        (new GitCommand($this))->checkOutDefaultBranch($path);
-        $branch = $this->resolveActiveBranch($path);
-        if ($branch === null) {
-            Output::warn("Cannot determine active branch, skip remote sync: $path");
-            return;
-        }
-
-        $branchArg = escapeshellarg($branch);
-        $remoteBranchInfo = $this->exec("git ls-remote --heads origin $branchArg", $path);
-        if ($remoteBranchInfo === false) {
-            Output::warn("Failed to inspect remote heads for: $path");
-            return;
-        }
-
-        if (trim($remoteBranchInfo) !== '') {
-            $this->exec("git pull --ff-only origin $branchArg", $path);
-            return;
-        }
-
-        $this->exec("git push -u origin $branchArg", $path);
-    }
-
-    /**
-     * 分支选择优先级：当前分支 > main > master > 第一个可用分支。
-     * detached HEAD 会被忽略。
-     *
-     * @param string $path 子模块路径
-     * @return string|null 可用分支名，无法解析时返回 null
-     */
-    private function resolveActiveBranch(string $path): ?string
-    {
-        $branchOutput = $this->exec('git branch --show-current', $path);
-        if ($branchOutput !== false) {
-            $branch = trim($branchOutput);
-            if ($branch !== '') {
-                return $branch;
-            }
-        }
-
-        $allBranchesOutput = $this->exec('git branch', $path);
-        if ($allBranchesOutput === false) {
-            return null;
-        }
-
-        $branches = explode("\n", trim($allBranchesOutput));
-        $fallback = null;
-
-        foreach ($branches as $line) {
-            $line = trim($line);
-            if ($line === '' || str_contains($line, '(HEAD detached')) {
-                continue;
-            }
-
-            $branchName = trim(str_replace('*', '', $line));
-            if ($branchName === 'main') {
-                return 'main';
-            }
-            if ($branchName === 'master') {
-                $fallback = 'master';
-                continue;
-            }
-            if ($fallback === null) {
-                $fallback = $branchName;
-            }
-        }
-
-        return $fallback;
-    }
-
-    /**
-     * 读取 .git/config 中的子模块 path/url 并按子模块名分组。
-     *
-     * @return array<string, array<string, string>> 子模块配置映射
-     */
-    private function getSubmoduleConfigs(): array
-    {
-        $output = $this->exec('git config --file .git/config --get-regexp "^submodule\\..*\\.(path|url)$"');
-        if ($output === false) {
-            return [];
-        }
-
-        $lines = explode("\n", trim($output));
-        $submodules = [];
-
-        foreach ($lines as $line) {
-            if (!preg_match('/^submodule\.(.+)\.(path|url)\s+(.*)$/', $line, $matches)) {
-                continue;
-            }
-
-            $name = $matches[1];
-            $key = $matches[2];
-            $value = $matches[3];
-            $submodules[$name][$key] = $value;
-        }
-
-        return $submodules;
     }
 
 }
