@@ -1,6 +1,5 @@
 <?php
 namespace nova;
-use nova\commands\init\InitCommand;
 use nova\console\Output;
 
 $config = require "config.php";
