@@ -359,13 +359,25 @@ class Output
 
     /**
      * 获取当前终端列宽，不可获取时返回 120。
+     * - Unix/macOS：通过 tput cols 读取
+     * - Windows：通过 mode con 读取
      */
     private static function terminalWidth(): int
     {
         static $width = null;
         if ($width === null) {
-            $cols  = (int)@shell_exec('tput cols 2>/dev/null');
-            $width = $cols > 20 ? $cols : 120;
+            if (PHP_OS_FAMILY === 'Windows') {
+                // Windows：解析 "mode con" 输出中的 Columns 字段
+                $out = @shell_exec('mode con');
+                if ($out && preg_match('/Columns[:\s]+(\d+)/i', $out, $m)) {
+                    $width = (int)$m[1];
+                } else {
+                    $width = 120;
+                }
+            } else {
+                $cols  = (int)@shell_exec('tput cols 2>/dev/null');
+                $width = $cols > 20 ? $cols : 120;
+            }
         }
         return $width;
     }
