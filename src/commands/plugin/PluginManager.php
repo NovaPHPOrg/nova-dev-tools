@@ -34,7 +34,7 @@ class PluginManager extends RemoteManager
     /** 初始化核心 workerman 子模块。 */
     public function installServeModule(): void
     {
-        $this->installRepoSubmodule($this->buildPluginRepoName('workerman'), './src/nova/workerman');
+        $this->installRepoSubmodule($this->buildPluginRepoName('workerman'), './src/nova/plugin/workerman');
     }
 
     /** 拉取并打印可安装插件列表。 */
