@@ -130,20 +130,25 @@ abstract class BaseCommand
     }
 
     /**
-     * 执行系统命令
-     * 实时流式读取 stdout / stderr，以 docker compose 风格的滚动日志输出（始终只显示最新 5 行）。
+     * 执行系统命令，实时流式读取 stdout / stderr。
+     * 使用 fread + proc_get_status 轮询，兼容 Windows（stream_select 在 Windows 管道上不可用）。
      *
-     * @param string      $command 要执行的命令
-     * @param string|null $dir     命令执行的工作目录，null 表示使用默认目录
-     * @return bool|string 成功返回标准输出内容，失败返回 false
+     * @param string      $command     要执行的命令
+     * @param string|null $dir         工作目录，null 表示使用当前目录
+     * @param bool        $ignoreError 为 true 时忽略非零退出码与 stderr 输出（跨平台替代 "|| true" / "2>/dev/null"）
+     * @return bool|string 成功（或 $ignoreError=true）返回 stdout，失败返回 false
      */
-    function exec(string $command, string $dir = null): bool|string
+    function exec(string $command, string $dir = null, bool $ignoreError = false): bool|string
     {
-        Output::step("$ $command");
+        if ($ignoreError) {
+            Output::muted("~ $command");
+        } else {
+            Output::step("$ $command");
+        }
 
         if ($dir !== null && !is_dir($dir)) {
             Output::error("Working directory does not exist: $dir");
-            return false;
+            return $ignoreError ? '' : false;
         }
 
         $descriptorspec = [
@@ -155,71 +160,128 @@ abstract class BaseCommand
 
         if (!is_resource($process)) {
             Output::error("Failed to start process");
-            return false;
+            return $ignoreError ? '' : false;
         }
 
-        // 设置非阻塞，配合 stream_select 实时读取
+        // 非阻塞模式，允许实时轮询读取
         stream_set_blocking($pipes[1], false);
         stream_set_blocking($pipes[2], false);
 
-        $stdout = '';
-        $stderr = '';
-        $open   = [1 => true, 2 => true]; // 标记每条管道是否仍然打开
+        $stdout   = '';
+        $stderr   = '';
+        $outBuf   = ''; // stdout 未完整行缓冲
+        $errBuf   = ''; // stderr 未完整行缓冲
+        $exitCode = -1;
+
+        // 将缓冲区中完整的行（以 \n 结尾）冲刷到滚动日志
+        $flushLines = function (string &$buf, bool $show): void {
+            while (($nl = strpos($buf, "\n")) !== false) {
+                $line = rtrim(substr($buf, 0, $nl));
+                $buf  = substr($buf, $nl + 1);
+                if ($line !== '' && $show) {
+                    Output::liveLog($line);
+                }
+            }
+        };
 
         Output::liveLogBegin(5);
 
-        while ($open[1] || $open[2]) {
-            $read = [];
-            if ($open[1]) $read[] = $pipes[1];
-            if ($open[2]) $read[] = $pipes[2];
+        do {
+            $chunk1 = fread($pipes[1], 8192);
+            if ($chunk1 !== false && $chunk1 !== '') {
+                $stdout .= $chunk1;
+                $outBuf .= $chunk1;
+            }
 
-            $write  = null;
-            $except = null;
+            $chunk2 = fread($pipes[2], 8192);
+            if ($chunk2 !== false && $chunk2 !== '') {
+                $stderr .= $chunk2;
+                $errBuf .= $chunk2;
+            }
 
-            // 最多等待 200ms，避免 CPU 空转
-            if (stream_select($read, $write, $except, 0, 200000) === false) {
+            $flushLines($outBuf, true);
+            $flushLines($errBuf, !$ignoreError);
+
+            $status = proc_get_status($process);
+
+            if (!$status['running']) {
+                // 进程已退出，捕获退出码（部分系统只有第一次调用有效）
+                $exitCode = (int)$status['exitcode'];
+
+                // 切回阻塞模式，彻底清空 OS 管道缓冲区
+                stream_set_blocking($pipes[1], true);
+                stream_set_blocking($pipes[2], true);
+
+                $r1 = stream_get_contents($pipes[1]);
+                if ($r1 !== false && $r1 !== '') { $stdout .= $r1; $outBuf .= $r1; }
+
+                $r2 = stream_get_contents($pipes[2]);
+                if ($r2 !== false && $r2 !== '') { $stderr .= $r2; $errBuf .= $r2; }
+
+                $flushLines($outBuf, true);
+                $flushLines($errBuf, !$ignoreError);
+
+                // 刷新末尾没有换行符的残余内容
+                if ($outBuf !== '') {
+                    $line = rtrim($outBuf);
+                    if ($line !== '') Output::liveLog($line);
+                }
+                if ($errBuf !== '' && !$ignoreError) {
+                    $line = rtrim($errBuf);
+                    if ($line !== '') Output::liveLog($line);
+                }
+
                 break;
             }
 
-            foreach ($read as $stream) {
-                $isStdout = ($stream === $pipes[1]);
-                // 循环读取当前可用的所有行
-                while (($line = fgets($stream)) !== false) {
-                    if ($isStdout) {
-                        $stdout .= $line;
-                    } else {
-                        $stderr .= $line;
-                    }
-                    $trimmed = rtrim($line);
-                    if ($trimmed !== '') {
-                        Output::liveLog($trimmed);
-                    }
-                }
-                // fgets 返回 false 且已到 EOF，标记该管道已关闭
-                if (feof($stream)) {
-                    if ($isStdout) {
-                        $open[1] = false;
-                    } else {
-                        $open[2] = false;
-                    }
-                }
+            // 无新数据时短暂休眠，避免 CPU 空转
+            // 此处使用轮询而非 stream_select，以兼容 Windows（pipe 不支持 stream_select）
+            if (($chunk1 === false || $chunk1 === '') && ($chunk2 === false || $chunk2 === '')) {
+                usleep(10000); // 10ms
             }
-        }
+        } while (true);
 
         fclose($pipes[1]);
         fclose($pipes[2]);
 
-        $exitCode = proc_close($process);
+        $closeCode = proc_close($process);
+        // proc_close 在 Windows 上有时返回 -1（exitcode 已被 proc_get_status 消费）
+        // 优先使用 proc_close 的值，否则回退到 proc_get_status 捕获的值
+        if ($closeCode >= 0) {
+            $exitCode = $closeCode;
+        }
 
         Output::liveLogEnd();
 
         if ($exitCode !== 0) {
-            Output::error("Command failed with exit code: $exitCode");
-            return false;
+            if (!$ignoreError) {
+                Output::error("Command failed with exit code: $exitCode");
+            }
+            return $ignoreError ? $stdout : false;
         }
 
-        Output::success("Command executed successfully");
-        return $stdout.$stderr;
+        if (!$ignoreError) {
+            Output::success("Command executed successfully");
+        }
+        return $stdout;
+    }
+
+    /**
+     * 以最大努力模式执行命令：忽略非零退出码，不显示 stderr。
+     *
+     * 跨平台替代方案，无需任何 Shell 特有语法：
+     *   - Unix:    cmd || true          →  $this->execSafe('cmd')
+     *   - Unix:    cmd 2>/dev/null      →  $this->execSafe('cmd')
+     *   - Windows: cmd 2>nul            →  $this->execSafe('cmd')
+     *
+     * @param string      $command 命令（不含任何 Shell 错误抑制符号）
+     * @param string|null $dir     工作目录
+     * @return string stdout 内容（失败时返回空字符串）
+     */
+    protected function execSafe(string $command, string $dir = null): string
+    {
+        $result = $this->exec($command, $dir, true);
+        return is_string($result) ? $result : '';
     }
 
 }
