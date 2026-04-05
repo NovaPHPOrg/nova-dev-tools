@@ -64,13 +64,38 @@ abstract class RemoteManager
         $this->command->addSubmodule($this->buildRepoUrl($repoName), $path);
     }
 
+    /** 缓存有效期（秒）。 */
+    protected const CACHE_TTL = 600;
+
     /**
-     * 拉取组织公开仓库列表。
+     * 返回当前组织仓库列表的缓存文件路径。
+     */
+    private function repoCacheFile(): string
+    {
+        $key = md5($this->buildOrgReposApiUrl());
+        return sys_get_temp_dir() . DIRECTORY_SEPARATOR . "nova_repo_list_{$key}.json";
+    }
+
+    /**
+     * 拉取组织公开仓库列表（带文件缓存，TTL = CACHE_TTL 秒）。
      *
      * @return array<int,mixed>|null 失败返回 null，成功返回仓库数组
      */
     protected function listOrgRepos(): ?array
     {
+        $cacheFile = $this->repoCacheFile();
+
+        // 命中有效缓存直接返回
+        if (
+            file_exists($cacheFile) &&
+            (time() - filemtime($cacheFile)) < self::CACHE_TTL
+        ) {
+            $cached = json_decode(file_get_contents($cacheFile), true);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        }
+
         $url = $this->buildOrgReposApiUrl();
         $ch = curl_init($url);
 
@@ -102,7 +127,14 @@ abstract class RemoteManager
             return null;
         }
 
-        return json_decode($response, true);
+        $data = json_decode($response, true);
+
+        // 写入缓存（仅缓存有效数组）
+        if (is_array($data)) {
+            file_put_contents($cacheFile, json_encode($data, JSON_UNESCAPED_UNICODE));
+        }
+
+        return $data;
     }
 
     /**

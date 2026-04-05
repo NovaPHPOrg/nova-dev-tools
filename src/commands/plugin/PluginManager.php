@@ -37,17 +37,16 @@ class PluginManager extends RemoteManager
         $this->installRepoSubmodule($this->buildPluginRepoName('workerman'), './src/nova/plugin/workerman');
     }
 
-    /** 拉取并打印可安装插件列表。 */
-    function list(): void
+    /** 静默拉取可安装插件列表，仅填充 $this->data，不输出任何内容。返回是否成功。 */
+    private function fetchList(): bool
     {
         $list = $this->listOrgRepos();
         if ($list === null) {
-            Output::error("Failed to fetch plugin list.");
-            return;
+            return false;
         }
 
         $this->data = [];
-        $executed = [
+        $excluded = [
             "nova-server",
             "nova",
             "nova-framework",
@@ -56,17 +55,27 @@ class PluginManager extends RemoteManager
 
         foreach ($list as $item) {
             if (!is_array($item)) {
-                Output::warn("fetch item: " . (string) $item);
                 continue;
             }
-
-            if (in_array($item["name"], $executed, true)) {
+            if (in_array($item["name"], $excluded, true)) {
                 continue;
             }
+            $this->data[] = str_replace("nova-", "", $item["name"]);
+        }
 
-            $name = str_replace("nova-", "", $item["name"]);
+        return true;
+    }
+
+    /** 拉取并打印可安装插件列表。 */
+    function list(): void
+    {
+        if (!$this->fetchList()) {
+            Output::error("Failed to fetch plugin list.");
+            return;
+        }
+
+        foreach ($this->data as $name) {
             Output::info($name);
-            $this->data[] = $name;
         }
     }
 
@@ -76,7 +85,10 @@ class PluginManager extends RemoteManager
     function add(string $pluginName): void
     {
         if (empty($this->data)) {
-            $this->list();
+            if (!$this->fetchList()) {
+                Output::error("Failed to fetch plugin list.");
+                return;
+            }
         }
 
         if (!in_array($pluginName, $this->data, true)) {
