@@ -287,5 +287,87 @@ class Output
             self::apply('light_cyan', $dir)
         );
     }
+
+    // ─── 滚动日志（docker compose 风格）────────────────────────────────
+
+    /** @var string[] 当前窗口中缓存的行 */
+    private static array $liveBuffer   = [];
+
+    /** @var int 滚动窗口最大行数 */
+    private static int   $liveMaxLines = 5;
+
+    /** @var int 上一次渲染实际输出的行数（用于回退光标） */
+    private static int   $liveRendered = 0;
+
+    /**
+     * 开始一个滚动日志区域，重置内部缓冲状态。
+     *
+     * @param int $maxLines 同时可见的最大行数，默认 5
+     */
+    public static function liveLogBegin(int $maxLines = 5): void
+    {
+        self::$liveBuffer   = [];
+        self::$liveMaxLines = $maxLines;
+        self::$liveRendered = 0;
+    }
+
+    /**
+     * 向滚动日志追加一行输出。
+     * 始终保留最新 $maxLines 行，超出部分自动向上清除。
+     *
+     * @param string $line 要追加的文本行（可包含 ANSI 转义码，内部会自动剥离再显示）
+     */
+    public static function liveLog(string $line): void
+    {
+        // 剥离 ANSI 转义码，防止光标位置计算出错
+        $clean = preg_replace('/\033\[[0-9;]*[A-Za-z]/', '', $line);
+        $clean = rtrim($clean);
+
+        // 超长行截断，保证不折行破坏布局
+        $maxWidth = self::terminalWidth() - 6;
+        if (mb_strlen($clean) > $maxWidth) {
+            $clean = mb_substr($clean, 0, $maxWidth - 1) . '…';
+        }
+
+        self::$liveBuffer[] = $clean;
+        if (count(self::$liveBuffer) > self::$liveMaxLines) {
+            array_shift(self::$liveBuffer);
+        }
+
+        // 将光标上移到上一次渲染的起点
+        if (self::$liveRendered > 0) {
+            echo "\033[" . self::$liveRendered . "A";
+        }
+
+        // 逐行清除当前行内容并重新绘制
+        foreach (self::$liveBuffer as $bufLine) {
+            echo "\r\033[2K" . self::apply('light_gray', "   $bufLine") . "\n";
+        }
+
+        self::$liveRendered = count(self::$liveBuffer);
+    }
+
+    /**
+     * 结束滚动日志区域，重置内部状态。
+     * 已渲染的行会保留在屏幕上，后续输出将从下一行开始。
+     */
+    public static function liveLogEnd(): void
+    {
+        self::$liveBuffer   = [];
+        self::$liveRendered = 0;
+    }
+
+    /**
+     * 获取当前终端列宽，不可获取时返回 120。
+     */
+    private static function terminalWidth(): int
+    {
+        static $width = null;
+        if ($width === null) {
+            $cols  = (int)@shell_exec('tput cols 2>/dev/null');
+            $width = $cols > 20 ? $cols : 120;
+        }
+        return $width;
+    }
 }
 

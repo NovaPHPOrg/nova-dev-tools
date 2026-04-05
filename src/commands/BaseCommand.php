@@ -131,10 +131,10 @@ abstract class BaseCommand
 
     /**
      * 执行系统命令
-     * 捕获 stdout 和 stderr，并通过 Output 进行格式化输出
+     * 实时流式读取 stdout / stderr，以 docker compose 风格的滚动日志输出（始终只显示最新 5 行）。
      *
-     * @param string $command 要执行的命令
-     * @param string|null $dir 命令执行的工作目录，null 表示使用默认目录
+     * @param string      $command 要执行的命令
+     * @param string|null $dir     命令执行的工作目录，null 表示使用默认目录
      * @return bool|string 成功返回标准输出内容，失败返回 false
      */
     function exec(string $command, string $dir = null): bool|string
@@ -158,25 +158,60 @@ abstract class BaseCommand
             return false;
         }
 
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
+        // 设置非阻塞，配合 stream_select 实时读取
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
+        $stdout = '';
+        $stderr = '';
+        $open   = [1 => true, 2 => true]; // 标记每条管道是否仍然打开
+
+        Output::liveLogBegin(5);
+
+        while ($open[1] || $open[2]) {
+            $read = [];
+            if ($open[1]) $read[] = $pipes[1];
+            if ($open[2]) $read[] = $pipes[2];
+
+            $write  = null;
+            $except = null;
+
+            // 最多等待 200ms，避免 CPU 空转
+            if (stream_select($read, $write, $except, 0, 200000) === false) {
+                break;
+            }
+
+            foreach ($read as $stream) {
+                $isStdout = ($stream === $pipes[1]);
+                // 循环读取当前可用的所有行
+                while (($line = fgets($stream)) !== false) {
+                    if ($isStdout) {
+                        $stdout .= $line;
+                    } else {
+                        $stderr .= $line;
+                    }
+                    $trimmed = rtrim($line);
+                    if ($trimmed !== '') {
+                        Output::liveLog($trimmed);
+                    }
+                }
+                // fgets 返回 false 且已到 EOF，标记该管道已关闭
+                if (feof($stream)) {
+                    if ($isStdout) {
+                        $open[1] = false;
+                    } else {
+                        $open[2] = false;
+                    }
+                }
+            }
+        }
 
         fclose($pipes[1]);
         fclose($pipes[2]);
 
         $exitCode = proc_close($process);
 
-        if ($stdout !== '') {
-            foreach (explode("\n", trim($stdout)) as $line) {
-                Output::muted($line);
-            }
-        }
-
-        if ($stderr !== '') {
-            foreach (explode("\n", trim($stderr)) as $line) {
-                Output::muted($line);
-            }
-        }
+        Output::liveLogEnd();
 
         if ($exitCode !== 0) {
             Output::error("Command failed with exit code: $exitCode");
@@ -184,7 +219,7 @@ abstract class BaseCommand
         }
 
         Output::success("Command executed successfully");
-        return $stdout;
+        return $stdout.$stderr;
     }
 
 }
