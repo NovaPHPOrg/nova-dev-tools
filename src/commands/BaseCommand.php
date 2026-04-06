@@ -49,6 +49,30 @@ abstract class BaseCommand
         return Output::prompt($promptMessage, $default);
     }
 
+    /** 兼容旧命令实现：输出信息提示。 */
+    protected function echoInfo(string $message): void
+    {
+        Output::info($message);
+    }
+
+    /** 兼容旧命令实现：输出成功提示。 */
+    protected function echoSuccess(string $message): void
+    {
+        Output::success($message);
+    }
+
+    /** 兼容旧命令实现：输出警告提示。 */
+    protected function echoWarn(string $message): void
+    {
+        Output::warn($message);
+    }
+
+    /** 兼容旧命令实现：输出错误提示。 */
+    protected function echoError(string $message): void
+    {
+        Output::error($message);
+    }
+
     /**
      * 递归删除目录或文件
      *
@@ -213,6 +237,68 @@ abstract class BaseCommand
     {
         $result = $this->exec($command, $dir, true);
         return is_string($result) ? $result : '';
+    }
+
+    /**
+     * 以流式方式执行命令，实时输出 stdout / stderr，适合长期运行的进程（如服务器）。
+     *
+     * @param string      $command 要执行的命令
+     * @param string|null $dir     工作目录
+     * @return int 进程退出码
+     */
+    protected function execStream(string $command, string $dir = null): int
+    {
+        Output::commandLine('$', $command);
+
+        if ($dir !== null && !is_dir($dir)) {
+            Output::error("Working directory does not exist: $dir");
+            return 1;
+        }
+
+        $process = proc_open($command, [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ], $pipes, $dir);
+
+        if (!is_resource($process)) {
+            Output::error("Failed to start process");
+            return 1;
+        }
+
+        fclose($pipes[0]);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
+        $open = [1 => $pipes[1], 2 => $pipes[2]];
+
+        while (!empty($open)) {
+            $read = array_values($open);
+            $write = $except = null;
+
+            if (stream_select($read, $write, $except, 1) === false) {
+                break;
+            }
+
+            foreach ($read as $pipe) {
+                while (($line = fgets($pipe)) !== false) {
+                    $line = rtrim($line, "\r\n");
+                    if ($line !== '') {
+                        $pipe === $pipes[1]
+                            ? Output::commandStdout($line)
+                            : Output::commandStderr($line);
+                    }
+                }
+                if (feof($pipe)) {
+                    $open = array_filter($open, fn($p) => $p !== $pipe);
+                }
+            }
+        }
+
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        return proc_close($process);
     }
 
 }
