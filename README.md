@@ -40,11 +40,22 @@ php nova.phar help
 php nova.phar version
 php nova.phar init
 php nova.phar build
-php nova.phar test
+php nova.phar test list
+php nova.phar test all
+php nova.phar test run <test-name>
 php nova.phar fix
 php nova.phar serve start
 php nova.phar update
 php nova.phar refresh
+```
+
+### Test Commands
+
+```bash
+php nova.phar test list
+php nova.phar test all
+php nova.phar test run <test-name>
+php nova.phar test run <test-name> <another-test-name>
 ```
 
 ### Serve Commands

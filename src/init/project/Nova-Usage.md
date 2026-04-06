@@ -21,7 +21,9 @@ php nova.phar help
 php nova.phar version
 php nova.phar init
 php nova.phar build
-php nova.phar test [TestName...]
+php nova.phar test list
+php nova.phar test all
+php nova.phar test run <TestName> [TestName...]
 php nova.phar fix
 php nova.phar serve start
 php nova.phar serve stop
@@ -145,7 +147,7 @@ php nova.phar ui remove table
 
 ## 5. 测试：用例怎么写，怎么跑（重点）
 
-`test` 命令会扫描 `tests/*Test.php`，并执行每个测试类的 `test()` 方法。
+`test` 命令会扫描 `tests/*Test.php`，支持列出测试、执行全部测试，或按名称执行指定测试类的 `test()` 方法。
 
 ### 5.1 目录和命名规则
 
@@ -175,22 +177,28 @@ class UserTest extends TestCase
 
 ### 5.3 运行测试
 
+列出所有可发现测试：
+
+```bash
+php nova.phar test list
+```
+
 运行全部测试：
 
 ```bash
-php nova.phar test
+php nova.phar test all
 ```
 
 运行指定测试（不带 `Test.php` 后缀）：
 
 ```bash
-php nova.phar test User
+php nova.phar test run User
 ```
 
 运行多个指定测试：
 
 ```bash
-php nova.phar test User Order Payment
+php nova.phar test run User Order Payment
 ```
 
 ### 5.4 可用断言辅助方法（TestCase）

@@ -2,15 +2,17 @@
 
 namespace nova\commands\test;
 
-use AssertionError;
-
+use nova\console\Output;
 
 abstract class TestCase
 {
-
-    abstract function test();
+    abstract public function test();
 
     private $baseCommand;
+    private int $totalChecks = 0;
+    private int $passedChecks = 0;
+    private int $failedChecks = 0;
+    private float $floatEpsilon = 1e-9;
 
     public function __construct($baseCommand)
     {
@@ -72,83 +74,182 @@ abstract class TestCase
         $ref->getMethod('trigger')->invoke(null, "framework.start");
     }
 
-    function checkObj($obj1, $obj2)
+    private function stringifyValue($value): string
     {
-        foreach (get_object_vars($obj1) as $key => $value) {
-            try {
-                assert($obj1->$key == $obj2->$key);
-                $this->baseCommand->echoSuccess("obj1->$key: " . print_r($value, true) . " == obj2->$key: " . print_r($obj2->$key, true));
-            } catch (AssertionError $e) {
-                $this->baseCommand->echoError("obj1->$key: " . print_r($value, true) . " != obj2->$key: " . print_r($obj2->$key, true));
+        return var_export($value, true);
+    }
+
+    private function recordCheck(bool $passed, string $successMessage, string $failureMessage): bool
+    {
+        $this->totalChecks++;
+
+        if ($passed) {
+            $this->passedChecks++;
+            Output::success($successMessage);
+            return true;
+        }
+
+        $this->failedChecks++;
+        Output::error($failureMessage);
+        return false;
+    }
+
+    private function checkMap(array $actual, array $expected, string $label): bool
+    {
+        $allPassed = true;
+
+        foreach ($expected as $key => $expectedValue) {
+            if (!array_key_exists($key, $actual)) {
+                $allPassed = $this->recordCheck(
+                    false,
+                    "$label[$key] exists",
+                    "$label[$key] missing, expected: " . $this->stringifyValue($expectedValue)
+                ) && $allPassed;
+                continue;
             }
-        }
-    }
 
-    function checkArray($arr1, $arr2)
-    {
-        foreach ($arr1 as $key => $value) {
-            try {
-                assert($value == $arr2[$key]);
-                $this->baseCommand->echoSuccess("arr1[$key]: " . print_r($value, true) . " == arr2[$key]: " . print_r($arr2[$key], true));
-            } catch (AssertionError $e) {
-                $this->baseCommand->echoError("arr1[$key]: " . print_r($value, true) . " != arr2[$key]: " . print_r($arr2[$key], true));
+            $actualValue = $actual[$key];
+            $allPassed = $this->recordCheck(
+                $actualValue === $expectedValue,
+                "$label[$key]: " . $this->stringifyValue($actualValue) . " === " . $this->stringifyValue($expectedValue),
+                "$label[$key]: " . $this->stringifyValue($actualValue) . " !== " . $this->stringifyValue($expectedValue)
+            ) && $allPassed;
+        }
+
+        foreach ($actual as $key => $actualValue) {
+            if (array_key_exists($key, $expected)) {
+                continue;
             }
+
+            $allPassed = $this->recordCheck(
+                false,
+                "$label[$key] expected",
+                "$label[$key] is unexpected, actual: " . $this->stringifyValue($actualValue)
+            ) && $allPassed;
         }
+
+        return $allPassed;
     }
 
-    function checkString($str1, $str2)
+    public function checkObj($obj1, $obj2): bool
     {
-        try {
-            assert(gettype($str1) == "string");
-            assert($str1 == $str2);
-            $this->baseCommand->echoSuccess("str1: " . print_r($str1, true) . " == str2: " . print_r($str2, true));
-        } catch (AssertionError $e) {
-            $this->baseCommand->echoError("str1: " . print_r($str1, true) . " != str2: " . print_r($str2, true));
+        if (!is_object($obj1) || !is_object($obj2)) {
+            return $this->recordCheck(
+                false,
+                'Object type check passed',
+                'checkObj expects two objects, actual types: ' . gettype($obj1) . ' and ' . gettype($obj2)
+            );
         }
+
+        return $this->checkMap(get_object_vars($obj1), get_object_vars($obj2), 'obj');
     }
 
-    function checkInt($int1, $int2)
+    public function checkArray($arr1, $arr2): bool
     {
-        try {
-            assert(gettype($int1) == "integer");
-            assert($int1 == $int2);
-            $this->baseCommand->echoSuccess("int1: " . print_r($int1, true) . " == int2: " . print_r($int2, true));
-        } catch (AssertionError $e) {
-            $this->baseCommand->echoError("int1: " . print_r($int1, true) . " != int2: " . print_r($int2, true));
+        if (!is_array($arr1) || !is_array($arr2)) {
+            return $this->recordCheck(
+                false,
+                'Array type check passed',
+                'checkArray expects two arrays, actual types: ' . gettype($arr1) . ' and ' . gettype($arr2)
+            );
         }
+
+        return $this->checkMap($arr1, $arr2, 'arr');
     }
 
-    function checkFloat($float1, $float2)
+    public function checkString($str1, $str2): bool
     {
-        try {
-            assert(gettype($float1) == "double");
-            assert($float1 == $float2);
-            $this->baseCommand->echoSuccess("float1: " . print_r($float1, true) . " == float2: " . print_r($float2, true));
-        } catch (AssertionError $e) {
-            $this->baseCommand->echoError("float1: " . print_r($float1, true) . " != float2: " . print_r($float2, true));
+        if (!is_string($str1) || !is_string($str2)) {
+            return $this->recordCheck(
+                false,
+                'String type check passed',
+                'checkString expects two strings, actual types: ' . gettype($str1) . ' and ' . gettype($str2)
+            );
         }
+
+        return $this->recordCheck(
+            $str1 === $str2,
+            'str1: ' . $this->stringifyValue($str1) . ' === str2: ' . $this->stringifyValue($str2),
+            'str1: ' . $this->stringifyValue($str1) . ' !== str2: ' . $this->stringifyValue($str2)
+        );
     }
 
-    function checkBool($bool1, $bool2)
+    public function checkInt($int1, $int2): bool
     {
-        try {
-            assert(gettype($bool1) == "boolean");
-            assert($bool1 == $bool2);
-            $this->baseCommand->echoSuccess("bool1: " . print_r($bool1, true) . " == bool2: " . print_r($bool2, true));
-        } catch (AssertionError $e) {
-            $this->baseCommand->echoError("bool1: " . print_r($bool1, true) . " != bool2: " . print_r($bool2, true));
+        if (!is_int($int1) || !is_int($int2)) {
+            return $this->recordCheck(
+                false,
+                'Int type check passed',
+                'checkInt expects two integers, actual types: ' . gettype($int1) . ' and ' . gettype($int2)
+            );
         }
+
+        return $this->recordCheck(
+            $int1 === $int2,
+            'int1: ' . $this->stringifyValue($int1) . ' === int2: ' . $this->stringifyValue($int2),
+            'int1: ' . $this->stringifyValue($int1) . ' !== int2: ' . $this->stringifyValue($int2)
+        );
     }
 
-    function checkNull($null1)
+    public function checkFloat($float1, $float2): bool
     {
-        try {
-            assert($null1 == null);
-            $this->baseCommand->echoSuccess("null1: " . print_r($null1, true) . " == null ");
-        } catch (AssertionError $e) {
-            $this->baseCommand->echoError("null1: " . print_r($null1, true) . " != null");
+        if (!is_float($float1) || !is_float($float2)) {
+            return $this->recordCheck(
+                false,
+                'Float type check passed',
+                'checkFloat expects two floats, actual types: ' . gettype($float1) . ' and ' . gettype($float2)
+            );
         }
+
+        $delta = abs($float1 - $float2);
+        return $this->recordCheck(
+            $delta <= $this->floatEpsilon,
+            'float delta ' . $this->stringifyValue($delta) . ' <= ' . $this->stringifyValue($this->floatEpsilon),
+            'float1: ' . $this->stringifyValue($float1) . ' is not close to float2: ' . $this->stringifyValue($float2) . ', delta: ' . $this->stringifyValue($delta)
+        );
     }
 
+    public function checkBool($bool1, $bool2): bool
+    {
+        if (!is_bool($bool1) || !is_bool($bool2)) {
+            return $this->recordCheck(
+                false,
+                'Bool type check passed',
+                'checkBool expects two booleans, actual types: ' . gettype($bool1) . ' and ' . gettype($bool2)
+            );
+        }
+
+        return $this->recordCheck(
+            $bool1 === $bool2,
+            'bool1: ' . $this->stringifyValue($bool1) . ' === bool2: ' . $this->stringifyValue($bool2),
+            'bool1: ' . $this->stringifyValue($bool1) . ' !== bool2: ' . $this->stringifyValue($bool2)
+        );
+    }
+
+    public function checkNull($null1): bool
+    {
+        return $this->recordCheck(
+            $null1 === null,
+            'value is null',
+            'value is not null, actual: ' . $this->stringifyValue($null1)
+        );
+    }
+
+    public function hasFailures(): bool
+    {
+        return $this->failedChecks > 0;
+    }
+
+    /**
+     * @return array{total:int, passed:int, failed:int}
+     */
+    public function getStats(): array
+    {
+        return [
+            'total' => $this->totalChecks,
+            'passed' => $this->passedChecks,
+            'failed' => $this->failedChecks,
+        ];
+    }
 
 }

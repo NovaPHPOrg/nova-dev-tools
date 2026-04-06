@@ -32,8 +32,10 @@ function help(): void
     Output::section("Project");
     Output::commandRow("init",    "Create a new Nova project");
     Output::commandRow("build",   "Build project as .phar package or .zip archive");
-    Output::commandRow("test",    "Run project tests");
-    Output::subCommandRow("test <name>", "Run a specific test case by name");
+    Output::commandRow("test",    "Manage project tests");
+    Output::subCommandRow("test list",       "List all discovered tests");
+    Output::subCommandRow("test all",        "Run all discovered tests");
+    Output::subCommandRow("test run <name>", "Run one or more tests by name");
     Output::commandRow("fix",     "Auto-fix code style (php-cs-fixer)");
     Output::commandRow("refresh", "Force-update git index (reset cached files)");
     Output::commandRow("update",  "Update all git submodules");

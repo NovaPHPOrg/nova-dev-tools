@@ -49,29 +49,6 @@ abstract class BaseCommand
         return Output::prompt($promptMessage, $default);
     }
 
-    /** 兼容旧命令实现：输出信息提示。 */
-    protected function echoInfo(string $message): void
-    {
-        Output::info($message);
-    }
-
-    /** 兼容旧命令实现：输出成功提示。 */
-    protected function echoSuccess(string $message): void
-    {
-        Output::success($message);
-    }
-
-    /** 兼容旧命令实现：输出警告提示。 */
-    protected function echoWarn(string $message): void
-    {
-        Output::warn($message);
-    }
-
-    /** 兼容旧命令实现：输出错误提示。 */
-    protected function echoError(string $message): void
-    {
-        Output::error($message);
-    }
 
     /**
      * 递归删除目录或文件
