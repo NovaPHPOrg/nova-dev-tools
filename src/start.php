@@ -39,6 +39,7 @@ function help(): void
     Output::commandRow("format",  "Format code style (php-cs-fixer)");
     Output::commandRow("refresh", "Force-update git index (reset cached files)");
     Output::commandRow("update",  "Update all git submodules");
+    Output::commandRow("migrate", "Migrate nova-ui submodules from git.ankio.icu → GitHub");
 
     Output::section("Server");
     Output::commandRow("serve",   "Manage the local development server");
