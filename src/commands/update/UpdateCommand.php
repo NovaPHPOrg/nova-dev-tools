@@ -4,6 +4,7 @@ namespace nova\commands\update;
 
 use nova\commands\BaseCommand;
 use nova\commands\GitCommand;
+use nova\commands\refresh\RefreshCommand;
 use nova\console\Output;
 
 class UpdateCommand extends BaseCommand
@@ -11,6 +12,9 @@ class UpdateCommand extends BaseCommand
 
     public function init(): void
     {
+        Output::info("Running refresh before update...");
+        (new RefreshCommand($this->workingDir, $this->options))->init();
+
         $git = new GitCommand($this);
         $git->updateSubmodules();
         // 获取当前分支
