@@ -36,7 +36,7 @@ function help(): void
     Output::subCommandRow("test list",       "List all discovered tests");
     Output::subCommandRow("test all",        "Run all discovered tests");
     Output::subCommandRow("test run <name>", "Run one or more tests by name");
-    Output::commandRow("fix",     "Auto-fix code style (php-cs-fixer)");
+    Output::commandRow("format",  "Format code style (php-cs-fixer)");
     Output::commandRow("refresh", "Force-update git index (reset cached files)");
     Output::commandRow("update",  "Update all git submodules");
 
