@@ -2,6 +2,8 @@
 
 namespace nova\commands;
 
+use nova\console\Output;
+
 /**
  * 远程资源管理基类。
  *
@@ -77,6 +79,26 @@ abstract class RemoteManager
     }
 
     /**
+     * 校验 GitHub 仓库列表响应结构。
+     *
+     * 预期格式：list<array{name:string,...}>
+     */
+    private function isValidRepoListPayload(array $data): bool
+    {
+        if (!array_is_list($data)) {
+            return false;
+        }
+
+        foreach ($data as $item) {
+            if (!is_array($item) || !isset($item['name']) || !is_string($item['name'])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * 拉取组织公开仓库列表（带文件缓存，TTL = CACHE_TTL 秒）。
      *
      * @return array<int,mixed>|null 失败返回 null，成功返回仓库数组
@@ -85,15 +107,18 @@ abstract class RemoteManager
     {
         $cacheFile = $this->repoCacheFile();
 
-        // 命中有效缓存直接返回
+        // 命中有效缓存直接返回（仅接受有效仓库列表）
         if (
             file_exists($cacheFile) &&
             (time() - filemtime($cacheFile)) < self::CACHE_TTL
         ) {
             $cached = json_decode(file_get_contents($cacheFile), true);
-            if (is_array($cached)) {
+            if (is_array($cached) && $this->isValidRepoListPayload($cached)) {
                 return $cached;
             }
+
+            // 旧缓存结构异常（如限流错误对象），丢弃并走网络拉取。
+            @unlink($cacheFile);
         }
 
         $url = $this->buildOrgReposApiUrl();
@@ -121,18 +146,39 @@ abstract class RemoteManager
 
         $response = curl_exec($ch);
         $errno = curl_errno($ch);
+        $error = curl_error($ch);
+        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
 
         if ($errno !== 0 || $response === false) {
+            Output::error("Failed to request GitHub API: $error");
             return null;
         }
 
         $data = json_decode($response, true);
-
-        // 写入缓存（仅缓存有效数组）
-        if (is_array($data)) {
-            file_put_contents($cacheFile, json_encode($data, JSON_UNESCAPED_UNICODE));
+        if (!is_array($data)) {
+            Output::error("Invalid response from GitHub API.");
+            return null;
         }
+
+        if ($statusCode >= 400) {
+            $msg = isset($data['message']) && is_string($data['message'])
+                ? $data['message']
+                : "HTTP $statusCode";
+            Output::error("GitHub API error: $msg");
+            return null;
+        }
+
+        if (!$this->isValidRepoListPayload($data)) {
+            $msg = isset($data['message']) && is_string($data['message'])
+                ? $data['message']
+                : 'Unexpected API payload shape.';
+            Output::error("Failed to parse repository list: $msg");
+            return null;
+        }
+
+        // 写入缓存（仅缓存有效仓库列表）
+        file_put_contents($cacheFile, json_encode($data, JSON_UNESCAPED_UNICODE));
 
         return $data;
     }
