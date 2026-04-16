@@ -99,6 +99,32 @@ abstract class RemoteManager
     }
 
     /**
+     * 从环境变量读取 GitHub Token。
+     *
+     * 优先级：NOVA_GITHUB_TOKEN > GITHUB_TOKEN > GH_TOKEN
+     */
+    protected function readGithubToken(): string
+    {
+        $keys = [
+            'NOVA_GITHUB_TOKEN',
+            'GITHUB_TOKEN',
+            'GH_TOKEN',
+        ];
+
+        foreach ($keys as $key) {
+            $value = getenv($key);
+            if ($value !== false) {
+                $value = trim($value);
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * 拉取组织公开仓库列表（带文件缓存，TTL = CACHE_TTL 秒）。
      *
      * @return array<int,mixed>|null 失败返回 null，成功返回仓库数组
@@ -128,6 +154,11 @@ abstract class RemoteManager
             'User-Agent: PHP',
             'Accept: application/vnd.github+json',
         ];
+
+        $token = $this->readGithubToken();
+        if ($token !== '') {
+            $headers[] = 'Authorization: Bearer ' . $token;
+        }
 
         $options = [
             CURLOPT_RETURNTRANSFER => true,
@@ -165,6 +196,15 @@ abstract class RemoteManager
             $msg = isset($data['message']) && is_string($data['message'])
                 ? $data['message']
                 : "HTTP $statusCode";
+
+            if (
+                $statusCode === 403 &&
+                str_contains(strtolower($msg), 'rate limit') &&
+                $token === ''
+            ) {
+                $msg .= ' Set NOVA_GITHUB_TOKEN (or GITHUB_TOKEN) to increase limits.';
+            }
+
             Output::error("GitHub API error: $msg");
             return null;
         }
