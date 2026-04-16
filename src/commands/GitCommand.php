@@ -25,33 +25,31 @@ class GitCommand
             }
             $path = $config['path'];
 
-            Output::info("Processing submodule at '$path'...");
-            Output::info("Working directory: " . getcwd());
+            $absPath = $this->baseCommand->workingDir . DIRECTORY_SEPARATOR . $path;
 
-            $real = realpath($path);
-            Output::info("Resolved path: " . ($real ?: 'NOT RESOLVED'));
-
+            Output::info("Processing submodule at '$absPath'...");
 
             // 检查子模块目录是否存在
-            if (!is_dir($real)) {
-                Output::warn("Submodule directory '$path' does not exist, skipping.");
-                continue;
-            }
-$this->checkOutDefaultBranch($path);
-            // 获取当前分支
-            $currentBranch = trim($this->baseCommand->exec('git branch --show-current', $real));
-            if (!$currentBranch) {
-                Output::warn("Could not determine current branch in '$path'.");
+            if (!is_dir($absPath)) {
+                Output::warn("Submodule directory '$absPath' does not exist, skipping.");
                 continue;
             }
 
-            Output::info("Current branch in '$path': '$currentBranch'");
+            $this->checkOutDefaultBranch($absPath);
+            // 获取当前分支
+            $currentBranch = trim($this->baseCommand->exec('git branch --show-current', $absPath));
+            if (!$currentBranch) {
+                Output::warn("Could not determine current branch in '$absPath'.");
+                continue;
+            }
+
+            Output::info("Current branch in '$absPath': '$currentBranch'");
 
             // 执行 git pull 拉取远程更新
-            if (!$this->baseCommand->exec('git pull origin ' . $currentBranch, $real)) {
-                Output::warn("Failed to pull from origin in '$path'.");
+            if (!$this->baseCommand->exec('git pull origin ' . $currentBranch, $absPath)) {
+                Output::warn("Failed to pull from origin in '$absPath'.");
             } else {
-                Output::success("Successfully pulled updates for submodule '$path' on branch '$currentBranch'.");
+                Output::success("Successfully pulled updates for submodule '$absPath' on branch '$currentBranch'.");
             }
         }
 

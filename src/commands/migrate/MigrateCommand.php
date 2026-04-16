@@ -10,6 +10,7 @@ use nova\console\Output;
  *
  * 将 .gitmodules 中所有指向 https://git.ankio.icu/nova-ui 的子模块
  * 迁移到 https://github.com/NovaPHPOrgUI。
+ * 迁移前先从源端 pull 最新代码，再推送到 GitHub。
  * 若子模块远程已是目标地址，则直接执行 pull 更新。
  *
  * 用法：nova migrate
@@ -24,7 +25,6 @@ class MigrateCommand extends BaseCommand
 
     public function init(): void
     {
-        // ── 检查 gh CLI ──
         if ($this->execSafe('gh --version') === '') {
             Output::error("GitHub CLI (gh) is not installed or not found in PATH.");
             Output::muted("Install it from: https://cli.github.com/");
@@ -58,7 +58,7 @@ class MigrateCommand extends BaseCommand
         $processed = 0;
         $skipped   = 0;
 
-        foreach ($sections as $section => $config) {
+        foreach ($sections as $config) {
             $subPath = (string) ($config['path'] ?? '');
             $url     = rtrim((string) ($config['url'] ?? ''), '/');
 
@@ -97,7 +97,8 @@ class MigrateCommand extends BaseCommand
                 continue;
             }
 
-            $this->migrateRepo($absDir, $repoName, $targetUrl, $section);
+            // $subPath 即 git config 中 submodule.<name>.url 的 <name>
+            $this->migrateRepo($absDir, $repoName, $url, $targetUrl, $subPath);
             $processed++;
         }
 
@@ -110,15 +111,39 @@ class MigrateCommand extends BaseCommand
 
     // ─── 单子模块迁移 ─────────────────────────────────────────────────────
 
+    /**
+     * @param string $dir        子模块绝对路径
+     * @param string $repoName   仓库名（basename of path）
+     * @param string $sourceUrl  当前源远程地址（git.ankio.icu）
+     * @param string $targetUrl  目标远程地址（github.com）
+     * @param string $subPath    .gitmodules 中的 path 值，用作 git config key
+     */
     private function migrateRepo(
         string $dir,
         string $repoName,
+        string $sourceUrl,
         string $targetUrl,
-        string $sectionName
+        string $subPath
     ): void {
         $orgRepo = 'NovaPHPOrgUI/' . $repoName;
 
-        // ── 创建 GitHub 仓库（已存在时忽略）──
+        // ── Step 1: 确保 origin 指向源地址，先 pull 拉取最新 ──
+        Output::info("Pulling latest from source before migration...");
+        $this->execSafe('git remote remove origin', $dir);
+        $this->execSafe('git remote add origin ' . escapeshellarg($sourceUrl), $dir);
+
+        $branch = trim($this->execSafe('git branch --show-current', $dir));
+        if ($branch !== '') {
+            if ($this->exec("git pull origin {$branch}", $dir) === false) {
+                Output::warn("Pull from source failed, proceeding with local data.");
+            } else {
+                Output::success("Pulled latest from source/$branch.");
+            }
+        } else {
+            Output::warn("Could not determine current branch, skipping source pull.");
+        }
+
+        // ── Step 2: 创建 GitHub 仓库（已存在时忽略）──
         $createOut = $this->execSafe(
             'gh repo create ' . escapeshellarg($orgRepo) . ' --' . self::VISIBILITY,
             $dir
@@ -129,7 +154,7 @@ class MigrateCommand extends BaseCommand
             Output::warn("Repository $orgRepo may already exist, continuing...");
         }
 
-        // ── 更新 git remote ──
+        // ── Step 3: 切换 origin 到目标地址 ──
         $this->execSafe('git remote remove origin', $dir);
         if ($this->exec('git remote add origin ' . escapeshellarg($targetUrl), $dir) === false) {
             Output::error("Failed to set remote origin for: $repoName");
@@ -137,7 +162,7 @@ class MigrateCommand extends BaseCommand
         }
         Output::success("Remote origin → $targetUrl");
 
-        // ── 推送分支 + 标签 ──
+        // ── Step 4: 推送分支 + 标签 ──
         if ($this->exec('git push -u origin HEAD --force', $dir) === false) {
             Output::warn("Branch push failed for: $repoName");
         } else {
@@ -150,23 +175,22 @@ class MigrateCommand extends BaseCommand
             Output::success("Tags pushed.");
         }
 
-        // ── 更新 .gitmodules 中的 URL ──
+        // ── Step 5: 用 $subPath 作为 key 更新 .gitmodules 和 .git/config ──
+        // 正确 key 格式：submodule.<path>.url
         $this->exec(
             'git config --file .gitmodules ' .
-            escapeshellarg("submodule.{$sectionName}.url") . ' ' .
+            escapeshellarg("submodule.{$subPath}.url") . ' ' .
             escapeshellarg($targetUrl),
             $this->workingDir
         );
-
-        // ── 更新 .git/config 中的 URL ──
         $this->exec(
             'git config --file .git/config ' .
-            escapeshellarg("submodule.{$sectionName}.url") . ' ' .
+            escapeshellarg("submodule.{$subPath}.url") . ' ' .
             escapeshellarg($targetUrl),
             $this->workingDir
         );
 
-        Output::success("Config updated for submodule: $sectionName");
+        Output::success("Config updated for: $subPath");
     }
 
     // ─── Pull 更新 ───────────────────────────────────────────────────────
