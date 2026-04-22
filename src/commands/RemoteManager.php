@@ -22,11 +22,17 @@ abstract class RemoteManager
 
     /** @var array<string> 缓存的可安装名称列表 */
     protected array $data = [];
+    protected bool $skipCache = false;
 
     public function __construct(BaseCommand $baseCommand)
     {
         $this->baseCommand = $baseCommand;
         $this->command = new GitCommand($baseCommand);
+    }
+
+    public function setSkipCache(bool $skipCache): void
+    {
+        $this->skipCache = $skipCache;
     }
 
     /**
@@ -135,6 +141,7 @@ abstract class RemoteManager
 
         // 命中有效缓存直接返回（仅接受有效仓库列表）
         if (
+            !$this->skipCache &&
             file_exists($cacheFile) &&
             (time() - filemtime($cacheFile)) < self::CACHE_TTL
         ) {
@@ -218,7 +225,9 @@ abstract class RemoteManager
         }
 
         // 写入缓存（仅缓存有效仓库列表）
-        file_put_contents($cacheFile, json_encode($data, JSON_UNESCAPED_UNICODE));
+        if (!$this->skipCache) {
+            file_put_contents($cacheFile, json_encode($data, JSON_UNESCAPED_UNICODE));
+        }
 
         return $data;
     }

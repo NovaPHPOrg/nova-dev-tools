@@ -11,8 +11,8 @@ class PluginCommand extends BaseCommand
     {
         Output::usage("nova plugin <command> [options]");
         Output::section("Commands");
-        Output::commandRow("list", "List all available plugins");
-        Output::commandRow("add <name>", "Install a plugin");
+        Output::commandRow("list [--force]", "List all available plugins");
+        Output::commandRow("add <name> [--force]", "Install a plugin");
         Output::commandRow("remove <name>", "Uninstall a plugin");
         Output::writeln();
     }
@@ -20,6 +20,7 @@ class PluginCommand extends BaseCommand
     public function init(): void
     {
         $pluginManager = new PluginManager($this);
+        $pluginManager->setSkipCache($this->takeFlag('--force'));
 
         if (count($this->options) < 1) {
             $this->help();

@@ -12,8 +12,8 @@ class UiCommand extends BaseCommand
         Output::usage("nova ui <command> [options]");
         Output::section("Commands");
         Output::commandRow("init", "Scaffold a new Nova Admin UI project");
-        Output::commandRow("list", "List all available components");
-        Output::commandRow("add <name>", "Install a component");
+        Output::commandRow("list [--force]", "List all available components");
+        Output::commandRow("add <name> [--force]", "Install a component");
         Output::commandRow("remove <name>", "Uninstall a component");
         Output::writeln();
     }
@@ -21,6 +21,7 @@ class UiCommand extends BaseCommand
     public function init(): void
     {
         $uiManager = new UiManager($this);
+        $uiManager->setSkipCache($this->takeFlag('--force'));
 
         if (count($this->options) < 1) {
             $this->help();

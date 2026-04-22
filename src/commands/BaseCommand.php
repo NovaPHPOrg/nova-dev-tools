@@ -37,6 +37,33 @@ abstract class BaseCommand
     }
 
     /**
+     * 从当前命令选项中提取布尔标记。
+     *
+     * 命中任一标记返回 true，并将其从 $this->options 中移除。
+     */
+    protected function takeFlag(string ...$flags): bool
+    {
+        if ($flags === []) {
+            return false;
+        }
+
+        $found = false;
+        $nextOptions = [];
+
+        foreach ($this->options as $option) {
+            if (in_array($option, $flags, true)) {
+                $found = true;
+                continue;
+            }
+            $nextOptions[] = $option;
+        }
+
+        $this->options = $nextOptions;
+
+        return $found;
+    }
+
+    /**
      * 提示用户输入，支持默认值
      * 将用户交互委托给 Output::prompt 以保证一致的输出处理
      *
