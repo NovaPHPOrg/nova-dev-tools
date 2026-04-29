@@ -163,8 +163,10 @@ class MigrateCommand extends BaseCommand
         Output::success("Remote origin → $targetUrl");
 
         // ── Step 4: 推送分支 + 标签 ──
-        if ($this->exec('git push -u origin HEAD --force', $dir) === false) {
+        if ($this->exec('git push -u origin HEAD', $dir) === false) {
             Output::warn("Branch push failed for: $repoName");
+            Output::muted("Push rejected. Forcing local sync to remote and discarding local changes.");
+            $this->forceSyncWithRemote($dir);
         } else {
             Output::success("Branch pushed.");
         }
@@ -208,6 +210,27 @@ class MigrateCommand extends BaseCommand
         } else {
             Output::success("Pulled latest from origin/{$branch}.");
         }
+    }
+
+    private function forceSyncWithRemote(string $dir): void
+    {
+        $branch = trim($this->execSafe('git branch --show-current', $dir));
+        if ($branch === '') {
+            Output::warn("Could not determine current branch, skipping force sync.");
+            return;
+        }
+
+        if ($this->exec('git fetch origin', $dir) === false) {
+            Output::warn("Fetch failed, cannot force sync from remote.");
+            return;
+        }
+
+        if ($this->exec("git reset --hard origin/{$branch}", $dir) === false) {
+            Output::warn("Hard reset failed for branch: $branch");
+            return;
+        }
+
+        Output::success("Local branch reset to origin/{$branch}.");
     }
 }
 
