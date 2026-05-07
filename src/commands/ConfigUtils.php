@@ -7,6 +7,7 @@ class ConfigUtils
     private array $config;
     private string $file;
 
+
     /**
      * @param string $file 主配置文件路径
      */

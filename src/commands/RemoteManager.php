@@ -24,10 +24,16 @@ abstract class RemoteManager
     protected array $data = [];
     protected bool $skipCache = false;
 
+    protected ConfigUtils $conf;
+
+    protected ConfigUtils $exampleConf;
+
     public function __construct(BaseCommand $baseCommand)
     {
         $this->baseCommand = $baseCommand;
         $this->command = new GitCommand($baseCommand);
+        $this->conf = new ConfigUtils();
+        $this->exampleConf = new ConfigUtils('./src/example.config.php');
     }
 
     public function setSkipCache(bool $skipCache): void

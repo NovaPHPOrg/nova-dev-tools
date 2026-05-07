@@ -111,9 +111,8 @@ class PluginManager extends RemoteManager
         if (file_exists($file)) {
             $config = include $file;
             if (isset($config['config'])) {
-                $conf = new ConfigUtils();
-                $conf->merge($config['config']);
-                unset($conf);
+                $this->conf->merge($config['config']);
+                $this->exampleConf->merge($config['config']);
             }
 
             if (!empty($config['ui_require']) && is_array($config['ui_require'])) {
@@ -141,9 +140,8 @@ class PluginManager extends RemoteManager
         if (file_exists($file)) {
             $config = include $file;
             if (isset($config['config'])) {
-                $conf = new ConfigUtils();
-                $conf->remove_keys($config['config']);
-                unset($conf);
+                $this->conf->remove_keys($config['config']);
+                $this->exampleConf->remove_keys($config['config']);
             }
             if (isset($config["require"])) {
                 foreach ($config["require"] as $item) {
