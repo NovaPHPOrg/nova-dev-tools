@@ -31,7 +31,7 @@ class BuildCommand extends BaseCommand
         $version = $this->prompt("Version", $this->nova['version']);
         Output::info("Building version: $version");
 
-        $config            = include $this->output . DIRECTORY_SEPARATOR . "config.php";
+        $config            = include $this->output . DIRECTORY_SEPARATOR . "example.config.php";
         $config["version"] = $version;
         $config["debug"]   = false;
         $config            = "<?php\nreturn " . var_export($config, true) . ";";
