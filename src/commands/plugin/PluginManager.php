@@ -4,10 +4,14 @@ namespace nova\commands\plugin;
 
 use nova\commands\ConfigUtils;
 use nova\commands\RemoteManager;
+use nova\commands\ui\UiManager;
 use nova\console\Output;
 
 /**
  * 插件管理器：负责插件列表、安装、卸载与插件配置联动。
+ *
+ * package.php 可选字段：config（并入项目配置）、require（依赖的其他 PHP 插件）、
+ * ui_require（随本插件一并安装的 NovaPHPOrgUI 组件名）。
  */
 class PluginManager extends RemoteManager
 {
@@ -112,6 +116,14 @@ class PluginManager extends RemoteManager
                 unset($conf);
             }
 
+            if (!empty($config['ui_require']) && is_array($config['ui_require'])) {
+                $ui = new UiManager($this->baseCommand);
+                $ui->setSkipCache($this->skipCache);
+                foreach ($config['ui_require'] as $item) {
+                    $ui->add((string) $item);
+                }
+            }
+
             if (isset($config["require"])) {
                 foreach ($config["require"] as $item) {
                     $this->add($item);
@@ -136,6 +148,14 @@ class PluginManager extends RemoteManager
             if (isset($config["require"])) {
                 foreach ($config["require"] as $item) {
                     $this->remove($item);
+                }
+            }
+
+            if (!empty($config['ui_require']) && is_array($config['ui_require'])) {
+                $ui = new UiManager($this->baseCommand);
+                $ui->setSkipCache($this->skipCache);
+                foreach ($config['ui_require'] as $item) {
+                    $ui->remove((string) $item);
                 }
             }
         }

@@ -2,11 +2,12 @@
 
 namespace nova\commands\ui;
 
+use nova\commands\ConfigUtils;
 use nova\commands\RemoteManager;
 use nova\console\Output;
 
 /**
- * UI 组件管理器：负责组件列表、安装与卸载。
+ * UI 组件管理器：负责组件列表、安装与卸载，以及 package.php 中 config/require 与主项目配置联动。
  */
 class UiManager extends RemoteManager
 {
@@ -22,18 +23,17 @@ class UiManager extends RemoteManager
         $this->installRepoSubmodule('framework', './src/app/static/framework');
     }
 
-    /** 拉取并打印可安装组件列表。 */
-    function list(): void
+    /** 静默拉取可安装组件列表，仅填充 {@see $data}，不输出任何内容。 */
+    private function fetchComponentsList(): bool
     {
         $list = $this->listOrgRepos();
         if ($list === null) {
-            Output::error("Failed to fetch components list.");
-            return;
+            return false;
         }
 
         $this->data = [];
         $executed = [
-            "framework",
+            'framework',
         ];
 
         foreach ($list as $item) {
@@ -41,21 +41,39 @@ class UiManager extends RemoteManager
                 continue;
             }
 
-            if (in_array($item["name"], $executed, true)) {
+            if (in_array($item['name'], $executed, true)) {
                 continue;
             }
 
-            $name = str_replace("nova-", "", $item["name"]);
+            $this->data[] = str_replace('nova-', '', $item['name']);
+        }
+
+        return true;
+    }
+
+    /** 拉取并打印可安装组件列表。 */
+    function list(): void
+    {
+        if (!$this->fetchComponentsList()) {
+            Output::error("Failed to fetch components list.");
+            return;
+        }
+
+        foreach ($this->data as $name) {
             Output::info($name);
-            $this->data[] = $name;
         }
     }
 
-    /** 安装指定 UI 组件。 */
+    /**
+     * 安装指定 UI 组件并处理组件目录中的 package.php（config/require 与项目配置联动）。
+     */
     function add(string $pluginName): void
     {
         if (empty($this->data)) {
-            $this->list();
+            if (!$this->fetchComponentsList()) {
+                Output::error("Failed to fetch components list.");
+                return;
+            }
         }
 
         if (!in_array($pluginName, $this->data, true)) {
@@ -69,11 +87,42 @@ class UiManager extends RemoteManager
             "./src/app/static/components/{$this->getSaveName($pluginName)}"
         );
         Output::info("Component $pluginName installed successfully.");
+
+        $file = getcwd() . "/src/app/static/components/{$this->getSaveName($pluginName)}/package.php";
+        if (file_exists($file)) {
+            $config = include $file;
+            if (isset($config['config'])) {
+                $conf = new ConfigUtils();
+                $conf->merge($config['config']);
+                unset($conf);
+            }
+
+            if (isset($config['require'])) {
+                foreach ($config['require'] as $item) {
+                    $this->add($item);
+                }
+            }
+        }
     }
 
-    /** 卸载指定 UI 组件。 */
+    /** 卸载指定 UI 组件并回滚 package.php 声明的联动配置。 */
     function remove(string $pluginName): void
     {
+        $file = getcwd() . "/src/app/static/components/{$this->getSaveName($pluginName)}/package.php";
+        if (file_exists($file)) {
+            $config = include $file;
+            if (isset($config['config'])) {
+                $conf = new ConfigUtils();
+                $conf->remove_keys($config['config']);
+                unset($conf);
+            }
+            if (isset($config['require'])) {
+                foreach ($config['require'] as $item) {
+                    $this->remove($item);
+                }
+            }
+        }
+
         Output::info("Uninstalling component $pluginName...");
         $this->command->removeSubmodule("./src/app/static/components/{$this->getSaveName($pluginName)}");
         Output::info("Component $pluginName uninstalled successfully.");
