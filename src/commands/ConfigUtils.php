@@ -6,10 +6,12 @@ class ConfigUtils
 {
     private array $config;
     private string $file;
+    private string $exampleFile;
 
     public function __construct()
     {
         $this->file = "./src/config.php";
+        $this->exampleFile = dirname($this->file) . DIRECTORY_SEPARATOR . 'example.config.php';
         $this->config = include $this->file;
     }
 
@@ -17,6 +19,49 @@ class ConfigUtils
     {
         $content = "<?php\nreturn " . var_export($this->config, true) . ";\n";
         file_put_contents($this->file, $content);
+    }
+
+    /** 写入 example.config.php（仅骨架/插件声明片段，不包含本地 config.php 里的敏感或未声明键）。 */
+    private function persistExample(array $example): void
+    {
+        $content = "<?php\nreturn " . var_export($example, true) . ";\n";
+        file_put_contents($this->exampleFile, $content);
+    }
+
+    /** 读取 example.config.php；不存在则视作空数组。 */
+    private function loadExampleConfig(): array
+    {
+        if (!file_exists($this->exampleFile)) {
+            return [];
+        }
+
+        $data = include $this->exampleFile;
+
+        return is_array($data) ? $data : [];
+    }
+
+    /** 将与模块/插件 package 声明一致的片段合并进 example（不复制整个 config.php）。 */
+    private function mergeIntoExample(array $fragment, bool $recursive): void
+    {
+        $example = $this->loadExampleConfig();
+        if ($recursive) {
+            $example = $this->mergeArrays($example, $fragment);
+        } else {
+            $example = array_merge($example, $fragment);
+        }
+        $this->persistExample($example);
+    }
+
+    /** 卸载时对 example 施加与 {@see remove_keys()} 相同的结构删除。 */
+    private function removeKeysFromExample(array $removeConfig): void
+    {
+        if (!file_exists($this->exampleFile)) {
+            return;
+        }
+
+        $example = $this->loadExampleConfig();
+        $example = $this->removeKeysRecursive($example, $removeConfig);
+        $this->persistExample($example);
     }
 
     /**
@@ -200,6 +245,7 @@ class ConfigUtils
         } else {
             $this->config = array_merge($this->config, $newConfig);
         }
+        $this->mergeIntoExample($newConfig, $recursive);
     }
 
     /**
@@ -231,6 +277,7 @@ class ConfigUtils
     public function remove_keys(array $removeConfig): void
     {
         $this->config = $this->removeKeysRecursive($this->config, $removeConfig);
+        $this->removeKeysFromExample($removeConfig);
     }
 
     /**
