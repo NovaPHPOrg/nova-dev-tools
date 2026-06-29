@@ -17,6 +17,11 @@ class BuildCommand extends BaseCommand
     {
         parent::__construct($workingDir, $options);
         $this->nova = json_decode(file_get_contents($workingDir . DIRECTORY_SEPARATOR . "package.json"),true);
+        $name = $this->nova['name'];
+        if (($pos = strrpos($name, '/')) !== false) {
+            $name = substr($name, $pos + 1);
+        }
+        $this->nova['name'] = $name;
         $this->zip = $this->workingDir. DIRECTORY_SEPARATOR . "dist";
         $this->output = $this->zip .DIRECTORY_SEPARATOR."temp";
     }
