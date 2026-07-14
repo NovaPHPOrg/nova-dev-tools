@@ -44,13 +44,19 @@ class BuildCommand extends BaseCommand
         file_put_contents($this->output . DIRECTORY_SEPARATOR . "example.config.php", $config);
         unlink($this->output . DIRECTORY_SEPARATOR . "config.php");
 
+        // 将检测到的扩展写入 extends.txt
+        $extensions = $this->detectExtensions();
+        if (!empty($extensions)) {
+            file_put_contents($this->output . DIRECTORY_SEPARATOR . "extends.txt", implode(',', $extensions));
+        }
+
         $this->removePath($this->output . DIRECTORY_SEPARATOR . "runtime");
         mkdir($this->output . DIRECTORY_SEPARATOR . "runtime", 0777, true);
 
         Output::step("Packing archive…");
         $zip = new \ZipArchive();
         $zip->open($this->zip . DIRECTORY_SEPARATOR . $this->nova['name'] . "-" . $version . ".zip", \ZipArchive::CREATE);
-        $this->addFileToZip($this->zip, $zip);
+        $this->addFileToZip($this->output, $zip);
         $zip->close();
         $this->removePath($this->output);
 
@@ -75,7 +81,7 @@ class BuildCommand extends BaseCommand
                 Output::writeln();
             }
         } else {
-             Output::info("Tip: Place a 'micro.sfx' (from static-php-cli) in the project root to build a standalone executable.");
+             Output::info("Tip: Run the generated SPC build commands in package.json ('scripts') to compile your own micro.sfx for cross-platform.");
              Output::writeln();
         }
     }
