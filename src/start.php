@@ -49,6 +49,9 @@ function help(): void
     Output::subCommandRow("serve reload",  "Reload the server");
     Output::subCommandRow("serve status",  "Show server status");
 
+    Output::section("Docker");
+    Output::commandRow("docker",  "Generate Docker and docker-compose files");
+
     Output::section("Plugins");
     Output::commandRow("plugin",  "Manage Nova PHP plugins");
     Output::subCommandRow("plugin list",              "List all available plugins");

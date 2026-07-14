@@ -305,4 +305,76 @@ abstract class BaseCommand
         return proc_close($process);
     }
 
+    /**
+     * 自动检测项目所需拓展（读取 composer.json 并扫描源码兜底）
+     */
+    protected function detectExtensions(): array
+    {
+        $extensions = ['pdo', 'mbstring']; // 基础拓展
+        $composerFile = $this->workingDir . DIRECTORY_SEPARATOR . 'composer.json';
+
+        // 1. 优先读取 composer.json 里的 ext-* 声明
+        if (file_exists($composerFile)) {
+            $composer = json_decode(file_get_contents($composerFile), true);
+            if (isset($composer['require']) && is_array($composer['require'])) {
+                foreach ($composer['require'] as $pkg => $version) {
+                    if (str_starts_with($pkg, 'ext-')) {
+                        $extName = substr($pkg, 4);
+                        if (!in_array($extName, $extensions)) {
+                            $extensions[] = $extName;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. 扫描 src 源码作为兜底补充
+        $srcDir = $this->workingDir . DIRECTORY_SEPARATOR . 'src';
+        if (is_dir($srcDir)) {
+            $map = [
+                'curl_init' => 'curl',
+                'Redis' => 'redis',
+                'Swoole' => 'swoole',
+                'bcadd' => 'bcmath',
+                'imagecreate' => 'gd',
+                'openssl_' => 'openssl',
+                'ZipArchive' => 'zip',
+                'socket_create' => 'sockets',
+                'pcntl_fork' => 'pcntl',
+                'igbinary_' => 'igbinary',
+                'memcached' => 'memcached',
+                'mongodb' => 'mongodb',
+                'mysqli_' => 'mysqli',
+                'gmp_add' => 'gmp',
+                'ffi_cdef' => 'ffi',
+            ];
+
+            $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($srcDir, FilesystemIterator::SKIP_DOTS));
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $content = file_get_contents($file->getPathname());
+                    foreach ($map as $keyword => $ext) {
+                        if (!in_array($ext, $extensions) && stripos($content, $keyword) !== false) {
+                            $extensions[] = $ext;
+                        }
+                    }
+                }
+            }
+        }
+
+        $extensions = array_unique($extensions);
+        sort($extensions);
+
+        // 同步回 package.json
+        $pkgFile = $this->workingDir . DIRECTORY_SEPARATOR . 'package.json';
+        if (file_exists($pkgFile)) {
+            $pkg = json_decode(file_get_contents($pkgFile), true);
+            if (!is_array($pkg)) $pkg = [];
+            $pkg['extensions'] = $extensions;
+            file_put_contents($pkgFile, json_encode($pkg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
+        return $extensions;
+    }
+
 }

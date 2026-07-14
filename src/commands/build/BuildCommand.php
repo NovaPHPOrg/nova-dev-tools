@@ -29,6 +29,7 @@ class BuildCommand extends BaseCommand
     public function init()
     {
         Output::section("Build Project");
+        $this->detectExtensions();
         $this->removePath($this->zip);
         mkdir($this->output, 0777, true);
         $this->copyDir($this->workingDir . DIRECTORY_SEPARATOR . "src", $this->output);
@@ -56,6 +57,27 @@ class BuildCommand extends BaseCommand
         Output::writeln();
         Output::success("Project packed → dist/{$this->nova['name']}-{$version}.zip");
         Output::writeln();
+
+        $sfxPath = $this->workingDir . DIRECTORY_SEPARATOR . 'micro.sfx';
+        if (file_exists($sfxPath)) {
+            $packMicro = $this->prompt("Found micro.sfx, package into standalone executable? [y/N]", "n");
+            if (strtolower($packMicro) === 'y') {
+                $ext = PHP_OS_FAMILY === 'Windows' ? '.exe' : '';
+                $microFile = $this->zip . DIRECTORY_SEPARATOR . $this->nova['name'] . "-" . $version . $ext;
+                $zipFile = $this->zip . DIRECTORY_SEPARATOR . $this->nova['name'] . "-" . $version . ".zip";
+                
+                $microSfx = file_get_contents($sfxPath);
+                $appZip = file_get_contents($zipFile);
+                file_put_contents($microFile, $microSfx . $appZip);
+                chmod($microFile, 0755);
+                
+                Output::success("Standalone executable packed → dist/" . basename($microFile));
+                Output::writeln();
+            }
+        } else {
+             Output::info("Tip: Place a 'micro.sfx' (from static-php-cli) in the project root to build a standalone executable.");
+             Output::writeln();
+        }
     }
 
 
