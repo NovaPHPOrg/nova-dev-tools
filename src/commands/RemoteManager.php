@@ -67,7 +67,7 @@ abstract class RemoteManager
      */
     protected function buildOrgReposApiUrl(): string
     {
-        return self::GITHUB_API_BASE_URL . '/orgs/' . $this->getOrgName() . '/repos?per_page=1000';
+        return self::GITHUB_API_BASE_URL . '/orgs/' . $this->getOrgName() . '/repos';
     }
 
     /**
@@ -137,7 +137,7 @@ abstract class RemoteManager
     }
 
     /**
-     * 拉取组织公开仓库列表（带文件缓存，TTL = CACHE_TTL 秒）。
+     * 拉取组织公开仓库列表（带文件缓存，TTL = CACHE_TTL 秒），并处理分页拉取所有页面。
      *
      * @return array<int,mixed>|null 失败返回 null，成功返回仓库数组
      */
@@ -160,82 +160,99 @@ abstract class RemoteManager
             @unlink($cacheFile);
         }
 
-        $url = $this->buildOrgReposApiUrl();
-        $ch = curl_init($url);
-
-        $headers = [
-            'User-Agent: PHP',
-            'Accept: application/vnd.github+json',
-        ];
-
+        $allRepos = [];
+        $page = 1;
         $token = $this->readGithubToken();
-        if ($token !== '') {
-            $headers[] = 'Authorization: Bearer ' . $token;
-        }
-
-        $options = [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => 0,
-        ];
-
         $proxy = $this->readHttpProxy();
-        if ($proxy !== '') {
-            $options[CURLOPT_PROXY] = $proxy;
-        }
 
-        curl_setopt_array($ch, $options);
+        while (true) {
+            $url = $this->buildOrgReposApiUrl() . "?per_page=100&page={$page}";
+            $ch = curl_init($url);
 
-        $response = curl_exec($ch);
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
+            $headers = [
+                'User-Agent: PHP',
+                'Accept: application/vnd.github+json',
+            ];
 
-        if ($errno !== 0 || $response === false) {
-            Output::error("Failed to request GitHub API: $error");
-            return null;
-        }
-
-        $data = json_decode($response, true);
-        if (!is_array($data)) {
-            Output::error("Invalid response from GitHub API.");
-            return null;
-        }
-
-        if ($statusCode >= 400) {
-            $msg = isset($data['message']) && is_string($data['message'])
-                ? $data['message']
-                : "HTTP $statusCode";
-
-            if (
-                $statusCode === 403 &&
-                str_contains(strtolower($msg), 'rate limit') &&
-                $token === ''
-            ) {
-                $msg .= ' Set NOVA_GITHUB_TOKEN (or GITHUB_TOKEN) to increase limits.';
+            if ($token !== '') {
+                $headers[] = 'Authorization: Bearer ' . $token;
             }
 
-            Output::error("GitHub API error: $msg");
-            return null;
-        }
+            $options = [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_HTTPHEADER => $headers,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+            ];
 
-        if (!$this->isValidRepoListPayload($data)) {
-            $msg = isset($data['message']) && is_string($data['message'])
-                ? $data['message']
-                : 'Unexpected API payload shape.';
-            Output::error("Failed to parse repository list: $msg");
-            return null;
+            if ($proxy !== '') {
+                $options[CURLOPT_PROXY] = $proxy;
+            }
+
+            curl_setopt_array($ch, $options);
+
+            $response = curl_exec($ch);
+            $errno = curl_errno($ch);
+            $error = curl_error($ch);
+            $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            curl_close($ch);
+
+            if ($errno !== 0 || $response === false) {
+                Output::error("Failed to request GitHub API: $error");
+                return null;
+            }
+
+            $data = json_decode($response, true);
+            if (!is_array($data)) {
+                Output::error("Invalid response from GitHub API.");
+                return null;
+            }
+
+            if ($statusCode >= 400) {
+                $msg = isset($data['message']) && is_string($data['message'])
+                    ? $data['message']
+                    : "HTTP $statusCode";
+
+                if (
+                    $statusCode === 403 &&
+                    str_contains(strtolower($msg), 'rate limit') &&
+                    $token === ''
+                ) {
+                    $msg .= ' Set NOVA_GITHUB_TOKEN (or GITHUB_TOKEN) to increase limits.';
+                }
+
+                Output::error("GitHub API error: $msg");
+                return null;
+            }
+
+            if (!$this->isValidRepoListPayload($data)) {
+                $msg = isset($data['message']) && is_string($data['message'])
+                    ? $data['message']
+                    : 'Unexpected API payload shape.';
+                Output::error("Failed to parse repository list: $msg");
+                return null;
+            }
+
+            if (empty($data)) {
+                break; // 已无数据
+            }
+
+            $allRepos = array_merge($allRepos, $data);
+
+            if (count($data) < 100) {
+                break; // 最后一页
+            }
+            
+            $page++;
         }
 
         // 写入缓存（仅缓存有效仓库列表）
-        if (!$this->skipCache) {
-            file_put_contents($cacheFile, json_encode($data, JSON_UNESCAPED_UNICODE));
+        if (!$this->skipCache && !empty($allRepos)) {
+            file_put_contents($cacheFile, json_encode($allRepos, JSON_UNESCAPED_UNICODE));
         }
 
-        return $data;
+        return $allRepos;
     }
 
     /**

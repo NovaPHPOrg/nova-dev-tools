@@ -372,22 +372,6 @@ abstract class BaseCommand
             $pkg = json_decode(file_get_contents($pkgFile), true);
             if (!is_array($pkg)) $pkg = [];
             $pkg['extensions'] = $extensions;
-            
-            // 优雅地生成 SPC 跨平台编译指令
-            $pkg['scripts'] = $pkg['scripts'] ?? [];
-            
-            $dl = "https://dl.static-php.dev/static-php-cli/spc-bin/nightly";
-            $spcMac = "curl -sS {$dl}/spc-macos-aarch64 -o spc && chmod +x spc";
-            $spcLin = "curl -sS {$dl}/spc-linux-x86_64 -o spc && chmod +x spc";
-            $spcWin = "powershell -Command \"Invoke-WebRequest -Uri '{$dl}/spc-windows-x64.exe' -OutFile 'spc.exe'\"";
-            
-            $docker = "docker run --rm -v \$(pwd):/app -w /app crazywhalecc/static-php-cli";
-
-            $pkg['scripts']['build:sfx:linux'] = "{$spcLin} && ./spc download {$extStr} && ./spc build {$extStr} --build-micro";
-            $pkg['scripts']['build:sfx:mac'] = "{$spcMac} && ./spc download {$extStr} && ./spc build {$extStr} --build-micro";
-            $pkg['scripts']['build:sfx:windows'] = "{$spcWin} && spc.exe download {$extStr} && spc.exe build {$extStr} --build-micro";
-            $pkg['scripts']['build:sfx:docker'] = "{$docker} spc download {$extStr} && {$docker} spc build {$extStr} --build-micro";
-            
             file_put_contents($pkgFile, json_encode($pkg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
 
