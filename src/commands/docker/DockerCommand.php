@@ -69,6 +69,92 @@ EOF;
 
     private function generateCompose(string $path): void
     {
+        $configFile = $this->workingDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'config.php';
+        if (!file_exists($configFile)) {
+            $configFile = $this->workingDir . DIRECTORY_SEPARATOR . 'example.config.php';
+        }
+
+        $config = [];
+        if (file_exists($configFile)) {
+            $config = include $configFile;
+        }
+
+        $extensions = $this->detectExtensions();
+        $dbServices = '';
+        $appDepends = '';
+        $volumesSection = '';
+        $configUpdated = false;
+
+        // 根据 config 决定是否有 DB
+        if (isset($config['db']) || in_array('pdo_mysql', $extensions) || in_array('mysqli', $extensions)) {
+            $dbName = $config['db']['db'] ?? 'nova';
+            $dbUser = !empty($config['db']['username']) ? $config['db']['username'] : 'root';
+            $dbPass = !empty($config['db']['password']) ? $config['db']['password'] : 'root';
+            $dbPort = $config['db']['port'] ?? 3306;
+
+            $envUser = $dbUser === 'root' ? '' : "\n      MYSQL_USER: {$dbUser}";
+
+            $dbServices .= <<<EOF
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: {$dbPass}
+      MYSQL_DATABASE: {$dbName}{$envUser}
+    ports:
+      - "{$dbPort}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - nova-network
+    restart: unless-stopped
+
+
+EOF;
+            $appDepends .= "      - mysql\n";
+            $volumesSection = "volumes:\n  mysql_data:\n";
+            
+            if (isset($config['db']['host']) && in_array($config['db']['host'], ['127.0.0.1', 'localhost'])) {
+                $config['db']['host'] = 'mysql';
+                $configUpdated = true;
+                Output::info("Auto-updated DB host to 'mysql' in config for Docker network.");
+            }
+        }
+
+        // 根据 config 决定是否有 Redis
+        if (isset($config['redis']) || in_array('redis', $extensions)) {
+            $redisPort = $config['redis']['port'] ?? 6379;
+            $redisAuth = !empty($config['redis']['password']) ? " redis-server --requirepass {$config['redis']['password']}" : "";
+            
+            $dbServices .= <<<EOF
+  redis:
+    image: redis:alpine
+    command:{$redisAuth}
+    ports:
+      - "{$redisPort}:6379"
+    networks:
+      - nova-network
+    restart: unless-stopped
+
+
+EOF;
+            $appDepends .= "      - redis\n";
+            
+            if (isset($config['redis']['host']) && in_array($config['redis']['host'], ['127.0.0.1', 'localhost'])) {
+                $config['redis']['host'] = 'redis';
+                $configUpdated = true;
+                Output::info("Auto-updated Redis host to 'redis' in config for Docker network.");
+            }
+        }
+
+        if ($configUpdated && file_exists($configFile)) {
+            $newConfigContent = "<?php\nreturn " . var_export($config, true) . ";\n";
+            file_put_contents($configFile, $newConfigContent);
+        }
+
+        if ($appDepends !== '') {
+            $appDepends = "    depends_on:\n" . rtrim($appDepends, "\n");
+        }
+
         $content = <<<EOF
 version: '3.8'
 
@@ -82,6 +168,7 @@ services:
     networks:
       - nova-network
     restart: unless-stopped
+{$appDepends}
 
   web:
     image: nginx:alpine
@@ -96,11 +183,12 @@ services:
       - nova-network
     restart: unless-stopped
 
-networks:
+{$dbServices}networks:
   nova-network:
     driver: bridge
-EOF;
-        file_put_contents($path, $content);
+
+{$volumesSection}EOF;
+        file_put_contents($path, trim($content) . "\n");
         Output::step("Created docker-compose.yml");
     }
 
