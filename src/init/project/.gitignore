@@ -1,5 +1,33 @@
-/vendor
+# Composer（vendor-dir = src/vendor）
+/src/vendor/
+/vendor/
 composer.lock
-/src/runtime
-src/config.php
-/dist
+
+# 本地配置（模板是 example.config.php）
+/src/config.php
+
+# 运行时与构建产物
+/src/runtime/
+/dist/
+
+# PHP 工具缓存
+.php-cs-fixer.cache
+.phpunit.result.cache
+.phpunit.cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 日志与环境变量
+*.log
+.env
+.env.*
