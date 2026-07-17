@@ -176,6 +176,11 @@ class BuildCommand extends BaseCommand
 
     private function addFileToZip(string $dir, \ZipArchive $zip, string $baseDir, string $zipPrefix = ''): void
     {
+        $relativeDir = substr($dir, strlen($baseDir) + 1);
+        if ($relativeDir !== false && $relativeDir !== '') {
+            $zip->addEmptyDir($zipPrefix . str_replace('\\', '/', $relativeDir));
+        }
+
         $handle = opendir($dir);
         while (($file = readdir($handle)) !== false) {
             if ($file === '.' || $file === '..') {
