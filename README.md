@@ -10,8 +10,9 @@ Nova Dev Tools is a PHP CLI toolkit for bootstrapping and maintaining Nova proje
 - Manage local development server module (`serve`)
 - Run project tests (`test`)
 - Build release archives (`build`)
+- Generate Docker files (`docker`)
 - Update and refresh git submodules (`update`, `refresh`)
-- Format PHP code (`fix`)
+- Format PHP code (`format`)
 
 ## Requirements
 
@@ -40,10 +41,11 @@ php nova.phar help
 php nova.phar version
 php nova.phar init
 php nova.phar build
+php nova.phar docker
 php nova.phar test list
 php nova.phar test all
 php nova.phar test run <test-name>
-php nova.phar fix
+php nova.phar format
 php nova.phar serve start
 php nova.phar update
 php nova.phar refresh
