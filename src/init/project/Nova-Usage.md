@@ -21,10 +21,15 @@ php nova.phar help
 php nova.phar version
 php nova.phar init
 php nova.phar build
+php nova.phar build source
+php nova.phar build windows
+php nova.phar build docker
+php nova.phar build all
+php nova.phar docker
 php nova.phar test list
 php nova.phar test all
 php nova.phar test run <TestName> [TestName...]
-php nova.phar fix
+php nova.phar format
 php nova.phar serve start
 php nova.phar serve stop
 php nova.phar serve restart
@@ -211,18 +216,49 @@ php nova.phar test run User Order Payment
 - `checkBool($bool1, $bool2)`
 - `checkNull($value)`
 
-## 6. 构建、格式化、更新
+## 6. 构建、Docker、格式化、更新
 
-打包项目：
+打包项目（默认 `source`，与旧版行为兼容）：
 
 ```bash
 php nova.phar build
+php nova.phar build source
+```
+
+产物：`dist/{name}-{version}.zip`（项目 `src/` 内容；已删 `config.php`，`debug=false`）。
+
+Windows 集成环境包（内置 tinyphp，项目放入 `tinyphp/www/`）：
+
+```bash
+php nova.phar build windows
+```
+
+产物：`dist/{name}-{version}-windows.zip`。
+
+Docker 部署包（含 `Dockerfile`、`docker-compose.yml`、`src/`）：
+
+```bash
+php nova.phar build docker
+```
+
+产物：`dist/{name}-{version}-docker.zip`。
+
+一次打出三种包：
+
+```bash
+php nova.phar build all
+```
+
+生成项目根目录 Docker 文件（不修改 `config.php`）：
+
+```bash
+php nova.phar docker
 ```
 
 格式化代码并提交：
 
 ```bash
-php nova.phar fix
+php nova.phar format
 ```
 
 更新所有子模块：

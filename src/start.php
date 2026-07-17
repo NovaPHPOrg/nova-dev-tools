@@ -31,7 +31,7 @@ function help(): void
 
     Output::section("Project");
     Output::commandRow("init",    "Create a new Nova project");
-    Output::commandRow("build",   "Build project as .phar package or .zip archive");
+    Output::commandRow("build",   "Build project zip (source|windows|docker|all)");
     Output::commandRow("test",    "Manage project tests");
     Output::subCommandRow("test list",       "List all discovered tests");
     Output::subCommandRow("test all",        "Run all discovered tests");

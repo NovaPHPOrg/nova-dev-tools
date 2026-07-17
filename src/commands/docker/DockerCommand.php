@@ -13,7 +13,6 @@ class DockerCommand extends BaseCommand
 
         $dockerfile = $this->workingDir . DIRECTORY_SEPARATOR . 'Dockerfile';
         $compose = $this->workingDir . DIRECTORY_SEPARATOR . 'docker-compose.yml';
-        $nginx = $this->workingDir . DIRECTORY_SEPARATOR . 'nginx.conf';
 
         $exists = file_exists($dockerfile) || file_exists($compose);
 
@@ -25,137 +24,52 @@ class DockerCommand extends BaseCommand
             }
         }
 
-        $this->generateDockerfile($dockerfile);
-        $this->generateCompose($compose);
-        $this->generateNginx($nginx);
+        file_put_contents($dockerfile, self::dockerfileContent());
+        Output::step("Created Dockerfile");
+
+        file_put_contents($compose, self::composeContent());
+        Output::step("Created docker-compose.yml");
 
         Output::success("Docker files generated successfully.");
         Output::writeln();
-        Output::info("Run 'docker-compose up -d' to start the service.");
+        Output::info("Run 'docker compose up -d' to start the service.");
         Output::writeln();
     }
 
-    private function generateDockerfile(string $path): void
+    public static function dockerfileContent(): string
     {
-        $extensions = $this->detectExtensions();
-        $extList = empty($extensions) ? '' : implode(' ', $extensions);
-
-        $content = <<<EOF
-FROM php:8.3-fpm-alpine
+        return <<<'EOF'
+FROM php:8.3-cli-alpine
 
 # Install common utilities
-RUN apk add --no-cache curl zip unzip git
+RUN apk add --no-cache curl zip unzip git sqlite
 
 # Install PHP extensions using mlocati's script
-# This handles all dependencies automatically
 ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 RUN chmod +x /usr/local/bin/install-php-extensions && \
-    install-php-extensions opcache {$extList}
+    install-php-extensions opcache curl gd mbstring pcntl posix pdo pdo_sqlite sqlite3
 
 WORKDIR /app
 
 # Copy project files
-COPY . /app/
+COPY src/ /app/
 
 # Setup permissions
-RUN chown -R www-data:www-data /app \
-    && chmod -R 755 /app/runtime
+RUN mkdir -p /app/runtime \
+      && chown -R www-data:www-data /app \
+      && chmod -R 755 /app/runtime \
+      && chmod +x /app/nova/plugin/workerman/workerman.sh
 
-CMD ["php-fpm"]
+EXPOSE 9528
+
+CMD ["sh","/app/nova/plugin/workerman/workerman.sh","start"]
+
 EOF;
-        file_put_contents($path, $content);
-        Output::step("Created Dockerfile");
     }
 
-    private function generateCompose(string $path): void
+    public static function composeContent(): string
     {
-        $configFile = $this->workingDir . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'config.php';
-        if (!file_exists($configFile)) {
-            $configFile = $this->workingDir . DIRECTORY_SEPARATOR . 'example.config.php';
-        }
-
-        $config = [];
-        if (file_exists($configFile)) {
-            $config = include $configFile;
-        }
-
-        $extensions = $this->detectExtensions();
-        $dbServices = '';
-        $appDepends = '';
-        $volumesSection = '';
-        $configUpdated = false;
-
-        // 根据 config 决定是否有 DB
-        if (isset($config['db']) || in_array('pdo_mysql', $extensions) || in_array('mysqli', $extensions)) {
-            $dbName = $config['db']['db'] ?? 'nova';
-            $dbUser = !empty($config['db']['username']) ? $config['db']['username'] : 'root';
-            $dbPass = !empty($config['db']['password']) ? $config['db']['password'] : 'root';
-            $dbPort = $config['db']['port'] ?? 3306;
-
-            $envUser = $dbUser === 'root' ? '' : "\n      MYSQL_USER: {$dbUser}";
-
-            $dbServices .= <<<EOF
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: {$dbPass}
-      MYSQL_DATABASE: {$dbName}{$envUser}
-    ports:
-      - "{$dbPort}:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - nova-network
-    restart: unless-stopped
-
-
-EOF;
-            $appDepends .= "      - mysql\n";
-            $volumesSection = "volumes:\n  mysql_data:\n";
-            
-            if (isset($config['db']['host']) && in_array($config['db']['host'], ['127.0.0.1', 'localhost'])) {
-                $config['db']['host'] = 'mysql';
-                $configUpdated = true;
-                Output::info("Auto-updated DB host to 'mysql' in config for Docker network.");
-            }
-        }
-
-        // 根据 config 决定是否有 Redis
-        if (isset($config['redis']) || in_array('redis', $extensions)) {
-            $redisPort = $config['redis']['port'] ?? 6379;
-            $redisAuth = !empty($config['redis']['password']) ? " redis-server --requirepass {$config['redis']['password']}" : "";
-            
-            $dbServices .= <<<EOF
-  redis:
-    image: redis:alpine
-    command:{$redisAuth}
-    ports:
-      - "{$redisPort}:6379"
-    networks:
-      - nova-network
-    restart: unless-stopped
-
-
-EOF;
-            $appDepends .= "      - redis\n";
-            
-            if (isset($config['redis']['host']) && in_array($config['redis']['host'], ['127.0.0.1', 'localhost'])) {
-                $config['redis']['host'] = 'redis';
-                $configUpdated = true;
-                Output::info("Auto-updated Redis host to 'redis' in config for Docker network.");
-            }
-        }
-
-        if ($configUpdated && file_exists($configFile)) {
-            $newConfigContent = "<?php\nreturn " . var_export($config, true) . ";\n";
-            file_put_contents($configFile, $newConfigContent);
-        }
-
-        if ($appDepends !== '') {
-            $appDepends = "    depends_on:\n" . rtrim($appDepends, "\n");
-        }
-
-        $content = <<<EOF
+        return <<<'EOF'
 version: '3.8'
 
 services:
@@ -163,61 +77,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - .:/app
-    networks:
-      - nova-network
-    restart: unless-stopped
-{$appDepends}
-
-  web:
-    image: nginx:alpine
     ports:
-      - "8080:80"
+      - "9528:9528"
     volumes:
-      - .:/app
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - app
-    networks:
-      - nova-network
+      - ./src:/app
     restart: unless-stopped
 
-{$dbServices}networks:
-  nova-network:
-    driver: bridge
-
-{$volumesSection}EOF;
-        file_put_contents($path, trim($content) . "\n");
-        Output::step("Created docker-compose.yml");
-    }
-
-    private function generateNginx(string $path): void
-    {
-        if (file_exists($path)) {
-            return;
-        }
-
-        $content = <<<EOF
-server {
-    listen 80;
-    server_name localhost;
-    root /app/public;
-    index index.php index.html;
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass app:9000;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-        include fastcgi_params;
-    }
-}
 EOF;
-        file_put_contents($path, $content);
-        Output::step("Created nginx.conf");
     }
 }
