@@ -32,8 +32,11 @@ abstract class RemoteManager
     {
         $this->baseCommand = $baseCommand;
         $this->command = new GitCommand($baseCommand);
-        $this->conf = new ConfigUtils();
-        $this->exampleConf = new ConfigUtils('./src/example.config.php');
+        // 必须用绝对路径：ConfigUtils 从 phar 内 include 相对路径时可能读不到项目配置，
+        // 导致 $config=[]，merge 变成整文件替换。
+        $root = rtrim($baseCommand->workingDir, '/\\');
+        $this->conf = new ConfigUtils($root . '/src/config.php');
+        $this->exampleConf = new ConfigUtils($root . '/src/example.config.php');
     }
 
     public function setSkipCache(bool $skipCache): void

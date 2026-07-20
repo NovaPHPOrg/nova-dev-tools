@@ -31,7 +31,9 @@ class ConfigUtils
 
     /**
      * 合并更新配置并立即保存。
-     * 关联数组：深合并（新值覆盖同键）；列表：追加去重；标量：覆盖。
+     *
+     * - 数字键数组（含空洞）：按值追加去重，再重排索引
+     * - 关联数组：递归合并，只补缺失键，不覆盖已有标量
      */
     public function merge(array $newConfig): void
     {
@@ -41,6 +43,10 @@ class ConfigUtils
 
     private function mergeRecursive(array $base, array $over): array
     {
+        if ($this->isListLike($base) && $this->isListLike($over)) {
+            return array_values(array_unique(array_merge($base, $over), SORT_REGULAR));
+        }
+
         foreach ($over as $key => $value) {
             if (!array_key_exists($key, $base)) {
                 $base[$key] = $value;
@@ -48,23 +54,37 @@ class ConfigUtils
             }
 
             if (is_array($value) && is_array($base[$key])) {
-                if (array_is_list($base[$key]) && array_is_list($value)) {
-                    $base[$key] = array_values(array_unique(array_merge($base[$key], $value), SORT_REGULAR));
-                } else {
-                    $base[$key] = $this->mergeRecursive($base[$key], $value);
-                }
+                $base[$key] = $this->mergeRecursive($base[$key], $value);
                 continue;
             }
-
-            $base[$key] = $value;
+            // 已有标量：保留用户值
         }
 
         return $base;
     }
 
     /**
+     * 数字键数组（含空洞）视为列表。framework_start 被 unset 后常见非连续键，
+     * array_is_list 会误判成关联数组，导致按索引 0 覆盖而不是追加。
+     */
+    private function isListLike(array $arr): bool
+    {
+        if ($arr === []) {
+            return true;
+        }
+
+        foreach ($arr as $key => $_) {
+            if (!is_int($key)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * 递归删除指定的配置项并立即保存。
-     * 关联数组：按键删除；列表：按值删除（与 merge 的追加语义对称）。
+     * 列表按值删并重排索引；关联数组按键删。
      */
     public function remove_keys(array $removeConfig): void
     {
@@ -74,12 +94,11 @@ class ConfigUtils
 
     private function removeKeysRecursive(array $target, array $remove): array
     {
-        if (array_is_list($target) && array_is_list($remove)) {
-            $target = array_values(array_filter(
+        if ($this->isListLike($target) && $this->isListLike($remove)) {
+            return array_values(array_filter(
                 $target,
                 static fn ($item) => !in_array($item, $remove, true)
             ));
-            return $target;
         }
 
         foreach ($remove as $key => $value) {
