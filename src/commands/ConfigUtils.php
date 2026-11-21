@@ -2,10 +2,32 @@
 
 namespace nova\commands;
 
+/**
+ * nova.phar 用的配置读写：兼容双源。
+ *
+ * - 操作 src/config.php（运行时）：主文件 + src/config/{node}.config.php
+ * - 操作 example.config.php：保持单体，便于样例提交
+ */
 class ConfigUtils
 {
+    /** @var list<string> */
+    private const MAIN_KEYS = [
+        'debug',
+        'timezone',
+        'version',
+        'ip',
+        'port',
+        'default_route',
+        'domain',
+        'framework_start',
+        'cache_driver',
+        'cpu_cores',
+    ];
+
     private array $config;
     private string $file;
+    private string $nodesDir;
+    private bool $dualSource;
 
     /**
      * @param string $file 主配置文件路径
@@ -13,11 +35,40 @@ class ConfigUtils
     public function __construct(string $file = "./src/config.php")
     {
         $this->file = $file;
-        if (file_exists($file)) {
-            $this->config = include $this->file;
-        } else {
-            $this->config = [];
+        $this->nodesDir = dirname($file) . DIRECTORY_SEPARATOR . 'config';
+        $this->dualSource = basename($file) === 'config.php';
+        $this->config = $this->load();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function load(): array
+    {
+        $config = [];
+        if (is_file($this->file)) {
+            $data = include $this->file;
+            if (is_array($data)) {
+                $config = $data;
+            }
         }
+
+        if (!$this->dualSource || !is_dir($this->nodesDir)) {
+            return $config;
+        }
+
+        foreach (glob($this->nodesDir . DIRECTORY_SEPARATOR . '*.config.php') ?: [] as $nodeFile) {
+            $node = basename($nodeFile, '.config.php');
+            if ($node === '' || $node === 'example') {
+                continue;
+            }
+            $data = include $nodeFile;
+            if (is_array($data)) {
+                $config[$node] = $data;
+            }
+        }
+
+        return $config;
     }
 
     /**
@@ -25,8 +76,51 @@ class ConfigUtils
      */
     public function save(): void
     {
-        $content = "<?php\nreturn " . var_export($this->config, true) . ";\n";
-        file_put_contents($this->file, $content);
+        if (!$this->dualSource) {
+            $this->writePhpArray($this->file, $this->config);
+            return;
+        }
+
+        $main = [];
+        foreach ($this->config as $key => $value) {
+            $key = (string)$key;
+            if ($this->isSplitNode($key, $value)) {
+                if (!is_dir($this->nodesDir) && !mkdir($this->nodesDir, 0755, true) && !is_dir($this->nodesDir)) {
+                    throw new \RuntimeException('无法创建配置目录：' . $this->nodesDir);
+                }
+                $this->writePhpArray(
+                    $this->nodesDir . DIRECTORY_SEPARATOR . $key . '.config.php',
+                    is_array($value) ? $value : []
+                );
+                continue;
+            }
+            $main[$key] = $value;
+        }
+
+        $this->writePhpArray($this->file, $main);
+    }
+
+    private function isSplitNode(string $key, mixed $value): bool
+    {
+        if (in_array($key, self::MAIN_KEYS, true)) {
+            return false;
+        }
+        $nodeFile = $this->nodesDir . DIRECTORY_SEPARATOR . $key . '.config.php';
+        if (is_file($nodeFile)) {
+            return true;
+        }
+        return is_array($value);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function writePhpArray(string $path, array $data): void
+    {
+        $content = "<?php\nreturn " . var_export($data, true) . ";\n";
+        if (file_put_contents($path, $content) === false) {
+            throw new \RuntimeException('无法写入配置文件：' . $path);
+        }
     }
 
     /**
